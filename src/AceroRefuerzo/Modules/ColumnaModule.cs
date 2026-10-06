@@ -5,6 +5,7 @@ using AceroRefuerzo.Core;
 using AceroRefuerzo.UI;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
+using Comun;
 
 namespace AceroRefuerzo.Modules
 {
@@ -105,7 +106,7 @@ namespace AceroRefuerzo.Modules
             double hCm = Un.ToCm(f.SizeZ);
             string forma = s.IsRect ? $"Rectangular {Un.ToCm(f.SizeX):0.#} × {Un.ToCm(f.SizeY):0.#} cm" : $"Irregular ({s.Poly.Count} vértices)";
 
-            var form = new ParamForm("columna", "Acero en COLUMNAS", $"{forma}   ·   Altura {hCm / 100:0.00} m", bars);
+            var form = new ParamForm(App.Name, "columna", "Acero en COLUMNAS", $"{forma}   ·   Altura {hCm / 100:0.00} m", bars);
 
             form.Section("Sección");
             form.Choice("modo", "Tipo de armado", new[] { "Automático (detecta la forma)", "Rectangular (barras por cara)", "Contorno irregular / circular" }, 0);
@@ -132,6 +133,7 @@ namespace AceroRefuerzo.Modules
             form.Section("Opciones");
             form.Chk("cover", "Asignar el recubrimiento a la columna en Revit", true);
 
+            form.Validator = v => Distribution.Check(v.S("dist"));
             form.Figure = (g, r, v) => Figures.Columna(g, r, v, polyCm, v.I("modo") == 2 || (v.I("modo") == 0 && !s.IsRect), hCm);
             return form;
         }

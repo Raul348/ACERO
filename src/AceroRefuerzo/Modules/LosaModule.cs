@@ -5,6 +5,7 @@ using AceroRefuerzo.Core;
 using AceroRefuerzo.UI;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
+using Comun;
 
 namespace AceroRefuerzo.Modules
 {
@@ -81,7 +82,7 @@ namespace AceroRefuerzo.Modules
             double e = Un.ToCm(floor.get_Parameter(BuiltInParameter.FLOOR_ATTR_THICKNESS_PARAM)?.AsDouble() ?? Un.Cm(20));
             double lx = outline.Max(p => p.X), ly = outline.Max(p => p.Y);
 
-            var form = new ParamForm("losa", "Acero en LOSAS DE TECHO",
+            var form = new ParamForm(App.Name, "losa", "Acero en LOSAS DE TECHO",
                 $"Losa {lx / 100:0.00} × {ly / 100:0.00} m (envolvente)   ·   Espesor {e:0.#} cm", bars);
 
             form.Section("Recubrimientos y dirección");

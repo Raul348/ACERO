@@ -7,19 +7,20 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
-using AceroRefuerzo.Core;
 
-namespace AceroRefuerzo.UI
+namespace Comun
 {
     /// <summary>
     /// Ventana de datos genérica: a la izquierda la figura del elemento (se redibuja con cada cambio)
-    /// y a la derecha los parámetros. Recuerda los últimos valores usados en %AppData%\AceroRefuerzo.
+    /// y a la derecha los parámetros. Recuerda los últimos valores usados en %AppData%\&lt;programa&gt;.
     /// </summary>
     public sealed class ParamForm : Form
     {
         private enum Kind { Num, Txt, Bar, Chk, Choice }
 
+        private readonly string _app;
         private readonly string _id;
+        private readonly Button _ok;
         private readonly IList<BarItem> _bars;
         private readonly TableLayoutPanel _grid;
         private readonly Panel _preview;
@@ -29,12 +30,21 @@ namespace AceroRefuerzo.UI
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public Action<Graphics, RectangleF, FormValues> Figure { get; set; }
 
-        public ParamForm(string id, string title, string subtitle, IList<BarItem> bars)
-        {
-            _id = id;
-            _bars = bars;
+        /// <summary>Validación adicional al aceptar: devuelve un mensaje de error o null.</summary>
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public Func<FormValues, string> Validator { get; set; }
 
-            Text = "ACERO Refuerzo - " + title;
+        /// <summary>Texto del botón principal.</summary>
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public string AcceptText { get => _ok.Text; set => _ok.Text = value; }
+
+        public ParamForm(string app, string id, string title, string subtitle, IList<BarItem> bars = null)
+        {
+            _app = app;
+            _id = id;
+            _bars = bars ?? new List<BarItem>();
+
+            Text = app + " - " + title;
             Font = new Font("Segoe UI", 9f);
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.Sizable;
@@ -63,9 +73,9 @@ namespace AceroRefuerzo.UI
                 Dock = DockStyle.Bottom, Height = 54, FlowDirection = FlowDirection.RightToLeft,
                 Padding = new Padding(12, 10, 12, 10), BackColor = Color.FromArgb(244, 245, 247)
             };
-            var ok = new Button
+            var ok = _ok = new Button
             {
-                Text = "Colocar acero", Width = 150, Height = 32, DialogResult = DialogResult.OK,
+                Text = "Aceptar", Width = 150, Height = 32, DialogResult = DialogResult.OK,
                 BackColor = Theme.Accent, ForeColor = Color.White, FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9.5f)
             };
@@ -242,17 +252,15 @@ namespace AceroRefuerzo.UI
             try
             {
                 foreach (var kv in _inputs)
-                {
                     if (kv.Value.kind == Kind.Bar && ((ComboBox)kv.Value.ctrl).SelectedItem == null)
                         throw new FormatException("Seleccione todos los diámetros de barra.");
-                    if (kv.Value.kind == Kind.Txt && kv.Key == "dist")
-                        Distribution.Parse(((TextBox)kv.Value.ctrl).Text);
-                }
+                string error = Validator?.Invoke(Values());
+                if (error != null) throw new FormatException(error);
                 SaveSettings();
             }
             catch (FormatException ex)
             {
-                MessageBox.Show(this, ex.Message, "ACERO Refuerzo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, ex.Message, _app, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 DialogResult = DialogResult.None;
             }
         }
@@ -281,7 +289,7 @@ namespace AceroRefuerzo.UI
         // ------------------------------------------------------------------ Memoria de valores
 
         private string SettingsPath =>
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AceroRefuerzo", _id + ".ini");
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), _app.Replace(" ", ""), _id + ".ini");
 
         private void SaveSettings()
         {
@@ -353,14 +361,14 @@ namespace AceroRefuerzo.UI
         }
     }
 
-    internal static class Theme
+    public static class Theme
     {
         public static readonly Color Header = Color.FromArgb(34, 47, 68);
         public static readonly Color Accent = Color.FromArgb(196, 38, 38);
     }
 
     /// <summary>Permite usar la ventana de Revit como propietaria de los formularios.</summary>
-    internal sealed class RevitWindow : IWin32Window
+    public sealed class RevitWindow : IWin32Window
     {
         public RevitWindow(IntPtr handle) { Handle = handle; }
         public IntPtr Handle { get; }

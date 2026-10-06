@@ -8,6 +8,7 @@ using Autodesk.Revit.UI;
 using TaskDialog = Autodesk.Revit.UI.TaskDialog;
 using TaskDialogCommonButtons = Autodesk.Revit.UI.TaskDialogCommonButtons;
 using TaskDialogResult = Autodesk.Revit.UI.TaskDialogResult;
+using Comun;
 
 namespace AceroRefuerzo.Commands
 {
@@ -28,7 +29,7 @@ namespace AceroRefuerzo.Commands
             catch (Exception ex)
             {
                 message = ex.Message;
-                TaskDialog.Show("ACERO Refuerzo", "Error inesperado:\n" + ex.Message);
+                TaskDialog.Show(App.Name, "Error inesperado:\n" + ex.Message);
                 return Result.Failed;
             }
         }
@@ -73,7 +74,7 @@ namespace AceroRefuerzo.Commands
             catch (Exception ex)
             {
                 message = ex.Message;
-                TaskDialog.Show("ACERO Refuerzo", "Error inesperado:\n" + ex.Message);
+                TaskDialog.Show(App.Name, "Error inesperado:\n" + ex.Message);
                 return Result.Failed;
             }
         }
@@ -88,7 +89,7 @@ namespace AceroRefuerzo.Commands
             Document doc = data.Application.ActiveUIDocument?.Document;
             if (doc == null || doc.IsFamilyDocument)
             {
-                TaskDialog.Show("ACERO Refuerzo", "Abra un proyecto de Revit.");
+                TaskDialog.Show(App.Name, "Abra un proyecto de Revit.");
                 return Result.Cancelled;
             }
             int n;
@@ -98,7 +99,7 @@ namespace AceroRefuerzo.Commands
                 n = RebarTools.EnsureStandardBars(doc);
                 t.Commit();
             }
-            TaskDialog.Show("ACERO Refuerzo", n > 0
+            TaskDialog.Show(App.Name, n > 0
                 ? $"Se crearon {n} tipos de barra (Ø 6 mm a Ø 1 3/8\")."
                 : "El proyecto ya tiene todos los diámetros estándar.");
             return Result.Succeeded;
@@ -110,9 +111,9 @@ namespace AceroRefuerzo.Commands
     {
         public Result Execute(ExternalCommandData data, ref string message, ElementSet elements)
         {
-            var td = new TaskDialog("ACERO Refuerzo")
+            var td = new TaskDialog(App.Name)
             {
-                MainInstruction = "ACERO Refuerzo " + typeof(CmdAyuda).Assembly.GetName().Version.ToString(3),
+                MainInstruction = App.Name + " " + typeof(CmdAyuda).Assembly.GetName().Version.ToString(3),
                 MainContent =
                     "Colocación de acero de refuerzo para Revit 2024 - 2027.\n\n" +
                     "1. Seleccione los elementos (o pulse el botón y selecciónelos).\n" +

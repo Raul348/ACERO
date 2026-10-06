@@ -2,19 +2,19 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Windows.Media.Imaging;
-using AceroRefuerzo.Core;
+using Encofrado.Core;
 using ImageSource = System.Windows.Media.ImageSource;
 using Comun;
 
-namespace AceroRefuerzo.UI
+namespace Encofrado.UI
 {
     /// <summary>Conversión de los íconos a imágenes WPF para la cinta de Revit.</summary>
-    internal static partial class Icons
+    internal static partial class Iconos
     {
-        public static ImageSource Ribbon(ElementKind kind, int size) => ToImageSource(Bitmap(size, g => Draw(kind, g, size)));
+        public static ImageSource Ribbon(Pieza kind, int size) => ToImageSource(Bitmap(size, g => Draw(kind, g, size)));
         public static ImageSource Ribbon(Extra kind, int size) => ToImageSource(Bitmap(size, g => Draw(kind, g, size)));
 
-        public static ImageSource Tooltip(ElementKind kind) => ToImageSource(Bitmap(160, g =>
+        public static ImageSource Tooltip(Pieza kind) => ToImageSource(Bitmap(160, g =>
         {
             g.Clear(Color.White);
             Draw(kind, g, 160);

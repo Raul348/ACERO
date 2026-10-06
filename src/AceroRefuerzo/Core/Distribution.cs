@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Comun;
 
 namespace AceroRefuerzo.Core
 {
@@ -70,6 +71,13 @@ namespace AceroRefuerzo.Core
                 foreach (var i in items) i.SpacingCm *= 100.0;
 
             return items;
+        }
+
+        /// <summary>Valida el texto de la distribución: devuelve el mensaje de error o null.</summary>
+        public static string Check(string text)
+        {
+            try { Parse(text); return null; }
+            catch (FormatException ex) { return ex.Message; }
         }
 
         /// <summary>Posiciones (en pies, medidas desde la cara inicial) de todos los estribos.</summary>

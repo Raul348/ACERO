@@ -4,6 +4,7 @@ using AceroRefuerzo.Core;
 using AceroRefuerzo.UI;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
+using Comun;
 
 namespace AceroRefuerzo.Modules
 {
@@ -36,7 +37,7 @@ namespace AceroRefuerzo.Modules
             LocalFrame f = Frame(sample);
             double lx = Un.ToCm(f.SizeX), ly = Un.ToCm(f.SizeY), h = Un.ToCm(f.SizeZ);
 
-            var form = new ParamForm("zapata", "Acero en ZAPATAS",
+            var form = new ParamForm(App.Name, "zapata", "Acero en ZAPATAS",
                 $"Planta {lx / 100:0.00} × {ly / 100:0.00} m   ·   Peralte {h:0.#} cm", bars);
 
             form.Section("Recubrimiento");

@@ -4,12 +4,14 @@ using AceroRefuerzo.Commands;
 using AceroRefuerzo.Core;
 using AceroRefuerzo.UI;
 using Autodesk.Revit.UI;
+using Comun;
 
 namespace AceroRefuerzo
 {
     /// <summary>Crea la pestaña "ACERO" en la cinta de Revit con un botón (y su figura) por elemento.</summary>
     public sealed class App : IExternalApplication
     {
+        public const string Name = "ACERO Refuerzo";
         public const string TabName = "ACERO";
 
         public Result OnStartup(UIControlledApplication app)

@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 using AceroRefuerzo.Core;
+using Comun;
 
 namespace AceroRefuerzo.UI
 {
@@ -11,7 +12,7 @@ namespace AceroRefuerzo.UI
 
         public LauncherForm()
         {
-            Text = "ACERO Refuerzo";
+            Text = App.Name;
             Font = new Font("Segoe UI", 9f);
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.FixedDialog;

@@ -12,6 +12,7 @@ using TaskDialog = Autodesk.Revit.UI.TaskDialog;
 using TaskDialogCommonButtons = Autodesk.Revit.UI.TaskDialogCommonButtons;
 using TaskDialogResult = Autodesk.Revit.UI.TaskDialogResult;
 using Autodesk.Revit.UI.Selection;
+using Comun;
 
 namespace AceroRefuerzo.Commands
 {
@@ -23,7 +24,7 @@ namespace AceroRefuerzo.Commands
             UIDocument uidoc = uiapp.ActiveUIDocument;
             if (uidoc == null || uidoc.Document.IsFamilyDocument)
             {
-                TaskDialog.Show("ACERO Refuerzo", "Abra un proyecto de Revit (no una familia) para colocar acero.");
+                TaskDialog.Show(App.Name, "Abra un proyecto de Revit (no una familia) para colocar acero.");
                 return Result.Cancelled;
             }
 
@@ -35,7 +36,7 @@ namespace AceroRefuerzo.Commands
             List<BarItem> bars = RebarTools.BarItems(doc);
             if (bars.Count == 0)
             {
-                var td = new TaskDialog("ACERO Refuerzo")
+                var td = new TaskDialog(App.Name)
                 {
                     MainInstruction = "El proyecto no tiene tipos de barra de refuerzo.",
                     MainContent = "¿Desea crear los diámetros estándar (6 mm, 8 mm, 3/8\", 12 mm, 1/2\", 5/8\", 3/4\", 1\", 1 3/8\")?",
@@ -59,6 +60,7 @@ namespace AceroRefuerzo.Commands
             FormValues values;
             using (ParamForm form = module.CreateForm(doc, hosts[0], bars))
             {
+                form.AcceptText = "Colocar acero";
                 if (form.ShowDialog(owner) != DialogResult.OK) return Result.Cancelled;
                 values = form.Values();
             }
@@ -98,7 +100,7 @@ namespace AceroRefuerzo.Commands
             }
 
             // 5. Resumen.
-            var sum = new TaskDialog("ACERO Refuerzo - " + module.Title)
+            var sum = new TaskDialog(App.Name + " - " + module.Title)
             {
                 MainInstruction = report.Elements > 0
                     ? $"Acero colocado en {report.Elements} de {hosts.Count} elemento(s)."

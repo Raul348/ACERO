@@ -4,8 +4,17 @@ using System.Globalization;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
 
-namespace AceroRefuerzo.Core
+namespace Comun
 {
+    /// <summary>Diámetro disponible en el proyecto (para las listas desplegables).</summary>
+    public sealed class BarItem
+    {
+        public ElementId Id { get; set; }
+        public string Name { get; set; }
+        public double Mm { get; set; }
+        public override string ToString() => $"{Name}  (Ø {Mm:0.#} mm)";
+    }
+
     /// <summary>Valores capturados en el formulario (independientes de la ventana).</summary>
     public sealed class FormValues
     {

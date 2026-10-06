@@ -3,18 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
+using Comun;
 
 namespace AceroRefuerzo.Core
 {
-    /// <summary>Diámetro disponible en el proyecto (para las listas desplegables).</summary>
-    public sealed class BarItem
-    {
-        public ElementId Id { get; set; }
-        public string Name { get; set; }
-        public double Mm { get; set; }
-        public override string ToString() => $"{Name}  (Ø {Mm:0.#} mm)";
-    }
-
     /// <summary>Resumen de lo creado en una ejecución.</summary>
     internal sealed class RunReport
     {

@@ -4,6 +4,7 @@ using AceroRefuerzo.Core;
 using AceroRefuerzo.UI;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
+using Comun;
 
 namespace AceroRefuerzo.Modules
 {
@@ -37,7 +38,7 @@ namespace AceroRefuerzo.Modules
             LocalFrame f = Frame(sample);
             double b = Un.ToCm(f.SizeY), h = Un.ToCm(f.SizeZ), L = Un.ToCm(f.SizeX);
 
-            var form = new ParamForm("viga", "Acero en VIGAS",
+            var form = new ParamForm(App.Name, "viga", "Acero en VIGAS",
                 $"Sección {b:0.#} × {h:0.#} cm   ·   Luz libre {L / 100:0.00} m", bars);
 
             form.Section("Recubrimiento");
@@ -70,6 +71,7 @@ namespace AceroRefuerzo.Modules
             form.Section("Opciones");
             form.Chk("cover", "Asignar el recubrimiento a la viga en Revit", true);
 
+            form.Validator = v => Distribution.Check(v.S("dist"));
             form.Figure = (g, r, v) => Figures.Viga(g, r, v, b, h, L);
             return form;
         }

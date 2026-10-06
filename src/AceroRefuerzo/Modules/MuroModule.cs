@@ -4,6 +4,7 @@ using AceroRefuerzo.Core;
 using AceroRefuerzo.UI;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
+using Comun;
 
 namespace AceroRefuerzo.Modules
 {
@@ -36,7 +37,7 @@ namespace AceroRefuerzo.Modules
             LocalFrame f = Frame(sample);
             double L = Un.ToCm(f.SizeX), t = Un.ToCm(f.SizeY), H = Un.ToCm(f.SizeZ);
 
-            var form = new ParamForm("muro", "Acero en MUROS ESTRUCTURALES",
+            var form = new ParamForm(App.Name, "muro", "Acero en MUROS ESTRUCTURALES",
                 $"Longitud {L / 100:0.00} m   ·   Espesor {t:0.#} cm   ·   Altura {H / 100:0.00} m", bars);
 
             form.Section("General");
