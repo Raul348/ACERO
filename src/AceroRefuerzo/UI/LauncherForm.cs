@@ -1,7 +1,6 @@
 using System.Drawing;
 using System.Windows.Forms;
 using AceroRefuerzo.Core;
-using Comun;
 
 namespace AceroRefuerzo.UI
 {

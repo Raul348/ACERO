@@ -108,13 +108,12 @@ Con **Tipo de armado = Automático**, el programa lee la cara inferior de la col
 ## Estructura del código
 
 ```
-src/Comun/                  Ventana de datos con figura, primitivas de dibujo, unidades y geometría local
 src/AceroRefuerzo/
   App.cs                    Pestaña ACERO y botones con sus íconos
   Commands/                 Comandos de Revit y flujo común (selección → ventana → transacción → resumen)
   Modules/                  Un módulo por elemento: Viga, Columna, Zapata, Losa, Muro
-  Core/                     Polígonos, distribución de estribos, creación de barras
-  UI/                       Figuras del acero, íconos y menú integral
+  Core/                     Unidades, geometría local, polígonos, distribución de estribos, creación de barras
+  UI/                       Ventana de datos con figura, dibujo, figuras del acero, íconos y menú integral
 ```
 
 Para agregar otro elemento estructural, cree una clase que implemente `IRebarModule` y regístrela en `ModuleRegistry`.

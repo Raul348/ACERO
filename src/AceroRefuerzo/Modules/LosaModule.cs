@@ -5,7 +5,6 @@ using AceroRefuerzo.Core;
 using AceroRefuerzo.UI;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
-using Comun;
 
 namespace AceroRefuerzo.Modules
 {

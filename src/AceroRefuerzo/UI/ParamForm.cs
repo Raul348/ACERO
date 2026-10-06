@@ -7,8 +7,9 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using AceroRefuerzo.Core;
 
-namespace Comun
+namespace AceroRefuerzo.UI
 {
     /// <summary>
     /// Ventana de datos genérica: a la izquierda la figura del elemento (se redibuja con cada cambio)

@@ -4,8 +4,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
 using AceroRefuerzo.Core;
-using static Comun.Dibujo;
-using Comun;
+using static AceroRefuerzo.UI.Dibujo;
 
 namespace AceroRefuerzo.UI
 {

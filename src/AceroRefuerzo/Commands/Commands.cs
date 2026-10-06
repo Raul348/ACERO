@@ -8,7 +8,6 @@ using Autodesk.Revit.UI;
 using TaskDialog = Autodesk.Revit.UI.TaskDialog;
 using TaskDialogCommonButtons = Autodesk.Revit.UI.TaskDialogCommonButtons;
 using TaskDialogResult = Autodesk.Revit.UI.TaskDialogResult;
-using Comun;
 
 namespace AceroRefuerzo.Commands
 {

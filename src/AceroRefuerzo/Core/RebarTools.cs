@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
-using Comun;
+using AceroRefuerzo.UI;
 
 namespace AceroRefuerzo.Core
 {

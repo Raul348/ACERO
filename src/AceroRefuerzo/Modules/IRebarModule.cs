@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using AceroRefuerzo.Core;
 using AceroRefuerzo.UI;
 using Autodesk.Revit.DB;
-using Comun;
 
 namespace AceroRefuerzo.Modules
 {

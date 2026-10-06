@@ -4,7 +4,7 @@ using System.Globalization;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
 
-namespace Comun
+namespace AceroRefuerzo.Core
 {
     /// <summary>Diámetro disponible en el proyecto (para las listas desplegables).</summary>
     public sealed class BarItem

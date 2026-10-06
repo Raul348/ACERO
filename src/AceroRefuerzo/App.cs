@@ -4,7 +4,6 @@ using AceroRefuerzo.Commands;
 using AceroRefuerzo.Core;
 using AceroRefuerzo.UI;
 using Autodesk.Revit.UI;
-using Comun;
 
 namespace AceroRefuerzo
 {

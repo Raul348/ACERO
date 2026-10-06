@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Autodesk.Revit.DB;
 
-namespace Comun
+namespace AceroRefuerzo.Core
 {
     /// <summary>
     /// Sistema de coordenadas local de un elemento con las dimensiones reales de su geometría

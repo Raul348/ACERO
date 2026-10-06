@@ -2,7 +2,7 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 
-namespace Comun
+namespace AceroRefuerzo.UI
 {
     /// <summary>Primitivas de dibujo compartidas por las figuras de los programas (estilo común).</summary>
     public static class Dibujo
