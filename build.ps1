@@ -1,11 +1,10 @@
-# Compila los programas ACERO Refuerzo y ENCOFRADO para Revit 2024, 2025, 2026 y 2027.
+# Compila ACERO Refuerzo para Revit 2024, 2025, 2026 y 2027.
 # Los paquetes quedan en .\dist\Revit<versión>\ listos para copiar a la carpeta Addins.
-#   .\build.ps1                                   -> los dos programas, todas las versiones
-#   .\build.ps1 -Versions 2025                    -> solo Revit 2025
-#   .\build.ps1 -Programas Encofrado              -> solo el programa de encofrado
+#   .\build.ps1                 -> todas las versiones
+#   .\build.ps1 -Versions 2025  -> solo Revit 2025
 param(
     [string[]]$Versions = @("2024", "2025", "2026", "2027"),
-    [string[]]$Programas = @("AceroRefuerzo", "Encofrado")
+    [string[]]$Programas = @("AceroRefuerzo")
 )
 $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot

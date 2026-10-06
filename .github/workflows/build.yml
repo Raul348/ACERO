@@ -1,4 +1,4 @@
-name: Compilar complementos
+name: Compilar complemento
 
 on:
   push:
@@ -26,5 +26,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Revit${{ matrix.revit }}-AceroRefuerzo-Encofrado
+          name: AceroRefuerzo-Revit${{ matrix.revit }}
           path: dist/Revit${{ matrix.revit }}

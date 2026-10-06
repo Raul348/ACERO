@@ -55,7 +55,7 @@
     <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" ExcludeAssets="runtime" PrivateAssets="all" />
   </ItemGroup>
 
-  <!-- Código compartido con el programa de encofrado. -->
+  <!-- Código común: ventana de datos con figura, dibujo, unidades y geometría. -->
   <ItemGroup>
     <Compile Include="..\Comun\**\*.cs" Link="Comun\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>

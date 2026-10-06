@@ -1,7 +1,7 @@
-# Instala los programas compilados (.\dist) en las versiones de Revit indicadas que estén instaladas.
+# Instala ACERO Refuerzo (compilado en .\dist) en las versiones de Revit indicadas que estén instaladas.
 #   .\install.ps1                  -> 2024..2027 (las que existan en %AppData%\Autodesk\Revit\Addins)
 #   .\install.ps1 -Versions 2025   -> solo Revit 2025
-# Requiere haber ejecutado antes .\build.ps1 (o descargar los paquetes de GitHub Actions en .\dist).
+# Requiere haber ejecutado antes .\build.ps1 (o descargar el paquete de GitHub Actions en .\dist).
 param([string[]]$Versions = @("2024", "2025", "2026", "2027"))
 $ErrorActionPreference = "Stop"
 
