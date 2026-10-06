@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>ACERO Refuerzo</Name>
+    <Assembly>AceroRefuerzo\AceroRefuerzo.dll</Assembly>
+    <AddInId>6E2F4B1C-8A3D-4C55-9B71-2D0E5A7C4F10</AddInId>
+    <FullClassName>AceroRefuerzo.App</FullClassName>
+    <VendorId>ACERO</VendorId>
+    <VendorDescription>ACERO Refuerzo - colocación de acero en vigas, columnas, zapatas, losas y muros</VendorDescription>
+  </AddIn>
+</RevitAddIns>

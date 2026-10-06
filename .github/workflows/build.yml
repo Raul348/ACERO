@@ -1,0 +1,30 @@
+name: Compilar complemento
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        revit: ["2024", "2025", "2026", "2027"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Compilar para Revit ${{ matrix.revit }}
+        shell: pwsh
+        run: ./build.ps1 -Versions ${{ matrix.revit }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AceroRefuerzo-Revit${{ matrix.revit }}
+          path: dist/Revit${{ matrix.revit }}
