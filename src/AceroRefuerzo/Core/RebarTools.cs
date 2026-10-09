@@ -18,6 +18,22 @@ namespace AceroRefuerzo.Core
         public readonly List<string> Errors = new List<string>();
         public readonly List<string> Warnings = new List<string>();
 
+        /// <summary>Filas de la planilla: descripción, diámetro, cantidad y longitud por barra (pies).</summary>
+        public readonly List<(string desc, string bar, int n, double largo)> Filas = new List<(string, string, int, double)>();
+
+        /// <summary>Planilla agrupada por descripción, diámetro y longitud de barra.</summary>
+        public string Planilla()
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (var g in Filas.GroupBy(f => (f.desc, f.bar, cm: Math.Round(Un.ToCm(f.largo)))).OrderBy(g => g.Key.desc))
+            {
+                int n = g.Sum(x => x.n);
+                double l = g.Key.cm / 100.0;
+                sb.AppendLine($"{g.Key.desc} · Ø {g.Key.bar} · {n} × {l:0.00} m = {n * l:0.00} m");
+            }
+            return sb.ToString().TrimEnd();
+        }
+
         public void Add(Element rebar, double diameterFt, int positions, double totalLength)
         {
             if (rebar == null) return;
@@ -43,7 +59,7 @@ namespace AceroRefuerzo.Core
 
         public static List<BarItem> BarItems(Document doc) =>
             new FilteredElementCollector(doc).OfClass(typeof(RebarBarType)).Cast<RebarBarType>()
-                .Select(t => new BarItem { Id = t.Id, Name = t.Name, Mm = Un.ToMm(Diameter(t)) })
+                .Select(t => new BarItem { Id = t.Id, Name = t.Name, Mm = Un.ToMm(Diameter(t)), BendMm = Un.ToMm(t.StandardBendDiameter) })
                 .OrderBy(b => b.Mm).ThenBy(b => b.Name).ToList();
 
         /// <summary>Crea los diámetros estándar que falten. Devuelve cuántos creó.</summary>
@@ -87,6 +103,22 @@ namespace AceroRefuerzo.Core
             try { hook.Name = $"ACERO - Gancho {angleDeg:0}°" + (style == RebarStyle.StirrupTie ? " estribo" : ""); }
             catch (Exception) { /* nombre repetido: se deja el automático */ }
             return hook;
+        }
+
+        /// <summary>
+        /// Fija en Revit la extensión del gancho para este tipo de barra (tabla "Longitudes de gancho").
+        /// Con 0 se deja la configuración que ya tenga Revit.
+        /// </summary>
+        public static void SetHookLength(RebarBarType barType, RebarHookType hook, double length)
+        {
+            if (barType == null || hook == null || length <= 0) return;
+            try
+            {
+                barType.SetHookPermission(hook.Id, true);
+                barType.SetAutoCalcHookLengths(hook.Id, false);
+                barType.SetHookLength(hook.Id, length);
+            }
+            catch (Exception) { /* algunos tipos de gancho no admiten longitud manual */ }
         }
 
         /// <summary>Busca o crea un tipo de recubrimiento con la distancia indicada.</summary>
@@ -232,6 +264,11 @@ namespace AceroRefuerzo.Core
             }
 
             report.Add(r, Diameter(type), r.NumberOfBarPositions, r.TotalLength);
+
+            // Longitud de cada barra según Revit (incluye patas y dobleces).
+            double largo = r.get_Parameter(BuiltInParameter.REBAR_ELEM_LENGTH)?.AsDouble() ?? 0;
+            if (largo <= 0 && r.NumberOfBarPositions > 0) largo = r.TotalLength / r.NumberOfBarPositions;
+            report.Filas.Add((comment, type.Name, r.NumberOfBarPositions, largo));
         }
     }
 }

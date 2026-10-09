@@ -66,8 +66,9 @@ namespace AceroRefuerzo.Modules
             return Geo.Horizontal(longest.GetEndPoint(1) - longest.GetEndPoint(0)) ?? XYZ.BasisX;
         }
 
-        public ParamForm CreateForm(Document doc, Element sample, IList<BarItem> bars)
+        public ParamForm CreateForm(Document doc, IList<Element> hosts, IList<BarItem> bars)
         {
+            Element sample = hosts[0];
             var floor = (Floor)sample;
             IList<Curve> boundary = Boundary(doc, floor);
             var pts = new List<XYZ>();

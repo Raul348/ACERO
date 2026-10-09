@@ -57,7 +57,7 @@ namespace AceroRefuerzo.Commands
 
             // 3. Formulario con la figura del elemento.
             FormValues values;
-            using (ParamForm form = module.CreateForm(doc, hosts[0], bars))
+            using (ParamForm form = module.CreateForm(doc, hosts, bars))
             {
                 form.AcceptText = "Colocar acero";
                 if (form.ShowDialog(owner) != DialogResult.OK) return Result.Cancelled;
@@ -73,23 +73,31 @@ namespace AceroRefuerzo.Commands
                 opts.SetFailuresPreprocessor(new WarningSwallower());
                 t.SetFailureHandlingOptions(opts);
 
-                foreach (Element host in hosts)
+                // Grupos: normalmente cada elemento solo; columnas de varios pisos del mismo eje van juntas.
+                List<List<Element>> grupos = module is IGroupModule gm
+                    ? gm.Agrupar(hosts, values)
+                    : hosts.Select(h => new List<Element> { h }).ToList();
+
+                foreach (List<Element> grupo in grupos)
                 {
                     using (var st = new SubTransaction(doc))
                     {
                         st.Start();
                         try
                         {
-                            if (!RebarHostData.IsValidHost(host))
-                                throw new InvalidOperationException("no puede alojar armadura (verifique que sea estructural).");
-                            module.Apply(doc, host, values, uidoc.ActiveView, report);
+                            Element malo = grupo.FirstOrDefault(h => !RebarHostData.IsValidHost(h));
+                            if (malo != null)
+                                throw new InvalidOperationException($"{malo.Name} no puede alojar armadura (verifique que sea estructural).");
+                            if (module is IGroupModule g) g.ApplyGroup(doc, grupo, values, uidoc.ActiveView, report);
+                            else module.Apply(doc, grupo[0], values, uidoc.ActiveView, report);
                             st.Commit();
-                            report.Elements++;
+                            report.Elements += grupo.Count;
                         }
                         catch (Exception ex)
                         {
                             st.RollBack();
-                            report.Errors.Add($"{host.Name} [Id {host.Id}]: {ex.Message}");
+                            Element h = grupo[0];
+                            report.Errors.Add($"{h.Name} [Id {h.Id}]" + (grupo.Count > 1 ? $" (+{grupo.Count - 1} pisos)" : "") + $": {ex.Message}");
                         }
                     }
                 }
@@ -110,8 +118,13 @@ namespace AceroRefuerzo.Commands
                     $"Longitud total: {Un.ToMm(report.LengthFt) / 1000.0:N2} m\n" +
                     $"Peso aproximado: {report.KgSteel:N1} kg",
             };
-            if (report.Errors.Count > 0)
-                sum.ExpandedContent = "Errores:\n" + string.Join("\n", report.Errors.Take(30));
+            var extra = new List<string>();
+            if (report.Warnings.Count > 0) extra.Add("Avisos:\n" + string.Join("\n", report.Warnings.Take(30)));
+            if (report.Errors.Count > 0) extra.Add("Errores:\n" + string.Join("\n", report.Errors.Take(30)));
+            string planilla = report.Planilla();
+            if (planilla.Length > 0) extra.Add("Planilla de barras (longitudes calculadas por Revit):\n" + planilla);
+            if (extra.Count > 0) sum.ExpandedContent = string.Join("\n\n", extra);
+            if (report.Warnings.Count > 0) sum.FooterText = $"{report.Warnings.Count} aviso(s): pulse \"Mostrar detalles\".";
             sum.Show();
 
             if (report.Elements == 0)

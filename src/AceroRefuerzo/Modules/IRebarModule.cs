@@ -12,8 +12,15 @@ namespace AceroRefuerzo.Modules
         string Title { get; }
         string Prompt { get; }
         bool Accepts(Element e);
-        ParamForm CreateForm(Document doc, Element sample, IList<BarItem> bars);
+        ParamForm CreateForm(Document doc, IList<Element> hosts, IList<BarItem> bars);
         void Apply(Document doc, Element host, FormValues v, View view, RunReport report);
+    }
+
+    /// <summary>Módulo que arma varios elementos juntos (por ejemplo, columnas de varios pisos de un mismo eje).</summary>
+    internal interface IGroupModule
+    {
+        List<List<Element>> Agrupar(IList<Element> hosts, FormValues v);
+        void ApplyGroup(Document doc, List<Element> grupo, FormValues v, View view, RunReport report);
     }
 
     internal static class ModuleRegistry

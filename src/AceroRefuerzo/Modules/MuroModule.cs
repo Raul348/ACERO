@@ -31,8 +31,9 @@ namespace AceroRefuerzo.Modules
             return LocalFrame.Measure(e, p0, x, y, XYZ.BasisZ);
         }
 
-        public ParamForm CreateForm(Document doc, Element sample, IList<BarItem> bars)
+        public ParamForm CreateForm(Document doc, IList<Element> hosts, IList<BarItem> bars)
         {
+            Element sample = hosts[0];
             LocalFrame f = Frame(sample);
             double L = Un.ToCm(f.SizeX), t = Un.ToCm(f.SizeY), H = Un.ToCm(f.SizeZ);
 
@@ -52,7 +53,7 @@ namespace AceroRefuerzo.Modules
             form.Section("Acero horizontal");
             form.Bar("barH", "Diámetro", 9.525);
             form.Num("sepH", "Separación", 20, "cm", 1, 5, 100);
-            form.Num("gancho", "Gancho a 90° en extremos (0 = recto)", 10, "cm");
+            form.Num("gancho", "Gancho a 90° en extremos, medido por fuera (0 = recto)", 10, "cm");
 
             form.Section("Opciones");
             form.Chk("cover", "Asignar el recubrimiento al muro en Revit", true);
@@ -97,7 +98,7 @@ namespace AceroRefuerzo.Modules
                 // Horizontal: por dentro del acero vertical; ganchos hacia el interior del muro.
                 double yh = s > 0 ? f.MaxY - c - dv - dh / 2 : s < 0 ? f.MinY + c + dv + dh / 2 : mid + dv / 2 + dh / 2;
                 double maxLeg = s == 0 ? (f.SizeY / 2 - c - dh) : f.SizeY - 2 * c - 2 * dv - dh;
-                double leg = Math.Max(0, Math.Min(v.Cm("gancho"), maxLeg));
+                double leg = Math.Max(0, Math.Min(Empalmes.PataEje(v.Cm("gancho"), dh), maxLeg));
                 int legSign = s > 0 ? -1 : +1;
 
                 var pts = new List<XYZ>();

@@ -12,6 +12,8 @@ namespace AceroRefuerzo.Core
         public ElementId Id { get; set; }
         public string Name { get; set; }
         public double Mm { get; set; }
+        /// <summary>Diámetro de doblez estándar del tipo de barra en Revit (mm).</summary>
+        public double BendMm { get; set; }
         public override string ToString() => $"{Name}  (Ø {Mm:0.#} mm)";
     }
 
@@ -45,5 +47,6 @@ namespace AceroRefuerzo.Core
         /// <summary>Diámetro en milímetros (para dibujar la figura).</summary>
         public double BarMm(string key, double fallback = 12) => BarItem(key)?.Mm ?? fallback;
         public string BarName(string key) => BarItem(key)?.Name ?? "?";
+        public double BendMm(string key) { BarItem b = BarItem(key); return b == null ? 72 : b.BendMm > 0 ? b.BendMm : 6 * b.Mm; }
     }
 }

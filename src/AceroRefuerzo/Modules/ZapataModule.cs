@@ -31,8 +31,9 @@ namespace AceroRefuerzo.Modules
             return LocalFrame.Measure(e, XYZ.Zero, XYZ.BasisX, XYZ.BasisY, XYZ.BasisZ);
         }
 
-        public ParamForm CreateForm(Document doc, Element sample, IList<BarItem> bars)
+        public ParamForm CreateForm(Document doc, IList<Element> hosts, IList<BarItem> bars)
         {
+            Element sample = hosts[0];
             LocalFrame f = Frame(sample);
             double lx = Un.ToCm(f.SizeX), ly = Un.ToCm(f.SizeY), h = Un.ToCm(f.SizeZ);
 
@@ -47,7 +48,7 @@ namespace AceroRefuerzo.Modules
             form.Num("sepX", "Separación barras en X", 20, "cm", 1, 5, 100);
             form.Bar("barY", "Diámetro barras en Y", 15.875);
             form.Num("sepY", "Separación barras en Y", 20, "cm", 1, 5, 100);
-            form.Num("pata", "Pata hacia arriba (0 = recta)", 15, "cm");
+            form.Num("pata", "Pata hacia arriba, medida por fuera (0 = recta)", 15, "cm");
 
             form.Section("Parrilla superior (opcional)");
             form.Chk("sup", "Colocar parrilla superior", false);
@@ -55,7 +56,7 @@ namespace AceroRefuerzo.Modules
             form.Num("sepSX", "Separación barras en X", 25, "cm", 1, 5, 100);
             form.Bar("barSY", "Diámetro barras en Y", 12.7);
             form.Num("sepSY", "Separación barras en Y", 25, "cm", 1, 5, 100);
-            form.Num("pataS", "Pata hacia abajo (0 = recta)", 15, "cm");
+            form.Num("pataS", "Pata hacia abajo, medida por fuera (0 = recta)", 15, "cm");
 
             form.Section("Opciones");
             form.Chk("cover", "Asignar el recubrimiento a la zapata en Revit", true);
@@ -77,10 +78,10 @@ namespace AceroRefuerzo.Modules
 
             // Capa 1: barras en X apoyadas sobre el recubrimiento inferior.
             double z1 = f.MinZ + c + dx / 2;
-            Mesh(doc, host, f, tX, true, z1, +1, Clamp(v.Cm("pata"), maxLeg), v.Cm("sepX"), c, view, report, "zapata inf. X");
+            Mesh(doc, host, f, tX, true, z1, +1, Clamp(Empalmes.PataEje(v.Cm("pata"), dx), maxLeg), v.Cm("sepX"), c, view, report, "zapata inf. X");
             // Capa 2: barras en Y sobre la capa 1.
             double z2 = f.MinZ + c + dx + dy / 2;
-            Mesh(doc, host, f, tY, false, z2, +1, Clamp(v.Cm("pata"), maxLeg - dx), v.Cm("sepY"), c, view, report, "zapata inf. Y");
+            Mesh(doc, host, f, tY, false, z2, +1, Clamp(Empalmes.PataEje(v.Cm("pata"), dy), maxLeg - dx), v.Cm("sepY"), c, view, report, "zapata inf. Y");
 
             if (!v.B("sup")) return;
 
@@ -89,8 +90,8 @@ namespace AceroRefuerzo.Modules
             double zs1 = f.MaxZ - c - dsx / 2;
             double zs2 = f.MaxZ - c - dsx - dsy / 2;
             double maxLegS = zs2 - z2 - dy;
-            Mesh(doc, host, f, sX, true, zs1, -1, Clamp(v.Cm("pataS"), maxLegS), v.Cm("sepSX"), c, view, report, "zapata sup. X");
-            Mesh(doc, host, f, sY, false, zs2, -1, Clamp(v.Cm("pataS"), maxLegS - dsx), v.Cm("sepSY"), c, view, report, "zapata sup. Y");
+            Mesh(doc, host, f, sX, true, zs1, -1, Clamp(Empalmes.PataEje(v.Cm("pataS"), dsx), maxLegS), v.Cm("sepSX"), c, view, report, "zapata sup. X");
+            Mesh(doc, host, f, sY, false, zs2, -1, Clamp(Empalmes.PataEje(v.Cm("pataS"), dsy), maxLegS - dsx), v.Cm("sepSY"), c, view, report, "zapata sup. Y");
         }
 
         private static double Clamp(double wanted, double max) => wanted <= 0 ? 0 : Math.Max(0, Math.Min(wanted, max));

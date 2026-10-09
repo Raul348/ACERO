@@ -106,6 +106,26 @@ Con **Tipo de armado = Automático**, el programa lee la cara inferior de la col
 - **Uno perimetral**: un solo estribo cerrado que sigue el contorno (con arcos reales en los círculos).
 - En secciones circulares o con lados inclinados siempre se usa el perimetral.
 
+### Longitud de las barras longitudinales (columnas de varios pisos)
+Las barras vienen de **9 m**. En el campo **Longitud de las barras** de la ventana de columnas:
+- **Automática**: una barra por columna, desde el anclaje inferior hasta el empalme superior (como antes).
+- **Tramos que yo indico**: seleccione las columnas de **todos los pisos de un mismo eje**; el programa las une
+  y coloca las barras **de abajo hacia arriba con la longitud exacta que usted escribe**. Por ejemplo, `9, 9, 4.5` (en m).
+  - La longitud de cada tramo es la **longitud total de la barra**: incluye la pata y el arco del doblez del primer tramo.
+  - Cada tramo empieza un **traslape** (por ejemplo 60 cm) antes del final del anterior.
+  - El programa **no decide dónde van los traslapes**: quedan donde caen con las longitudes que usted indica, incluso en el primer piso.
+  - La figura muestra los pisos, cada tramo y la cota de cada traslape. Avisa si un tramo supera la barra comercial o si los tramos no llegan al tope.
+
+**Patas medidas por fuera.** Todas las patas se escriben medidas por fuera, como en los planos.
+La longitud desarrollada de cada barra se calcula así: tramos rectos + patas − lo que se ahorra en el arco de cada doblez.
+El arco usa el diámetro de doblez del tipo de barra en Revit. En vigas, la figura muestra la longitud de las barras corridas y avisa si pasa de 9 m.
+
+**Gancho de los estribos.** La extensión del gancho a 135° se guarda en Revit, en la tabla *Longitudes de gancho* del tipo de barra del estribo.
+Con 0 se usa la que ya tenga configurada Revit. Como es una configuración del tipo de barra, afecta a todos los estribos de ese diámetro.
+
+**Planilla.** Al terminar, *Mostrar detalles* incluye una planilla con cada grupo de barras: diámetro, cantidad y longitud por barra.
+La longitud es la que calcula Revit, con patas y dobleces.
+
 ## Requisitos en el modelo
 - Vigas y muros **rectos**. Las columnas deben ser **verticales**.
 - Muros y losas con la opción **Estructural** activada; Revit solo permite armadura en anfitriones estructurales.

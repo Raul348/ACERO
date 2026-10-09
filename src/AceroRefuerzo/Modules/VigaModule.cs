@@ -32,8 +32,9 @@ namespace AceroRefuerzo.Modules
             return LocalFrame.Measure(e, p0, x, y, z);
         }
 
-        public ParamForm CreateForm(Document doc, Element sample, IList<BarItem> bars)
+        public ParamForm CreateForm(Document doc, IList<Element> hosts, IList<BarItem> bars)
         {
+            Element sample = hosts[0];
             LocalFrame f = Frame(sample);
             double b = Un.ToCm(f.SizeY), h = Un.ToCm(f.SizeZ), L = Un.ToCm(f.SizeX);
 
@@ -46,12 +47,12 @@ namespace AceroRefuerzo.Modules
             form.Section("Acero corrido superior");
             form.Bar("barSup", "Diámetro", 15.875);
             form.Num("nSup", "Número de barras", 2, "u", 0, 1, 20);
-            form.Num("pataSup", "Pata en apoyos (0 = recta)", 30, "cm");
+            form.Num("pataSup", "Pata en apoyos, medida por fuera (0 = recta)", 30, "cm");
 
             form.Section("Acero corrido inferior");
             form.Bar("barInf", "Diámetro", 15.875);
             form.Num("nInf", "Número de barras", 3, "u", 0, 1, 20);
-            form.Num("pataInf", "Pata en apoyos (0 = recta)", 30, "cm");
+            form.Num("pataInf", "Pata en apoyos, medida por fuera (0 = recta)", 30, "cm");
             form.Num("prol", "Prolongación dentro de apoyos", 0, "cm");
 
             form.Section("Bastones (2ª capa)");
@@ -65,9 +66,11 @@ namespace AceroRefuerzo.Modules
             form.Section("Estribos");
             form.Bar("barEst", "Diámetro", 9.525);
             form.Txt("dist", "Distribución (desde cada extremo)", "1@5, 10@10, R@20");
+            form.Num("gancho", "Gancho a 135°: extensión (0 = la de Revit)", 7.5, "cm");
             form.Note("Ejemplo: 1@5, 10@10, R@20 (cm)  ó  1@0.05, 10@0.10, R@0.20 (m).");
 
             form.Section("Opciones");
+            form.Num("lcom", "Longitud comercial de la barra", 9, "m", 2, 1, 30);
             form.Chk("cover", "Asignar el recubrimiento a la viga en Revit", true);
 
             form.Validator = v => Distribution.Check(v.S("dist"));
@@ -91,11 +94,11 @@ namespace AceroRefuerzo.Modules
             // --- Acero corrido superior e inferior ---------------------------------------------------
             double dbS = RebarTools.Diameter(tSup);
             double zTop = f.MaxZ - c - ds - dbS / 2;
-            Longitudinal(doc, host, f, tSup, v.I("nSup"), x0, x1, zTop, -1, Leg(v.Cm("pataSup"), innerH - dbS), ds, c, view, report, "viga sup. corrido");
+            Longitudinal(doc, host, f, tSup, v.I("nSup"), x0, x1, zTop, -1, Leg(Empalmes.PataEje(v.Cm("pataSup"), dbS), innerH - dbS), ds, c, view, report, "viga sup. corrido");
 
             double dbI = RebarTools.Diameter(tInf);
             double zBot = f.MinZ + c + ds + dbI / 2;
-            Longitudinal(doc, host, f, tInf, v.I("nInf"), x0, x1, zBot, +1, Leg(v.Cm("pataInf"), innerH - dbI), ds, c, view, report, "viga inf. corrido");
+            Longitudinal(doc, host, f, tInf, v.I("nInf"), x0, x1, zBot, +1, Leg(Empalmes.PataEje(v.Cm("pataInf"), dbI), innerH - dbI), ds, c, view, report, "viga inf. corrido");
 
             // --- Bastones superiores en cada apoyo (segunda capa) -------------------------------------
             int bsN = v.I("bsN");
@@ -105,7 +108,7 @@ namespace AceroRefuerzo.Modules
                 double db = RebarTools.Diameter(tb);
                 double z = zTop - dbS / 2 - Math.Max(Un.Cm(2.5), Math.Max(db, dbS)) - db / 2;
                 double len = v.D("bsFr") * f.SizeX;
-                double leg = Leg(v.Cm("pataSup"), z - (f.MinZ + c + ds) - db);
+                double leg = Leg(Empalmes.PataEje(v.Cm("pataSup"), db), z - (f.MinZ + c + ds) - db);
                 Longitudinal(doc, host, f, tb, bsN, x0, f.MinX + len, z, -1, leg, ds, c, view, report, "viga bastón sup.", legEnd: false);
                 Longitudinal(doc, host, f, tb, bsN, f.MaxX - len, x1, z, -1, leg, ds, c, view, report, "viga bastón sup.", legStart: false);
             }
@@ -130,6 +133,7 @@ namespace AceroRefuerzo.Modules
                 throw new InvalidOperationException("La sección es demasiado pequeña para el recubrimiento indicado.");
 
             RebarHookType h135 = RebarTools.Hook(doc, 135, RebarStyle.StirrupTie);
+            RebarTools.SetHookLength(tEst, h135, v.Cm("gancho"));
             // Polígono del estribo en el plano local Y-Z (se usa X=Y local, Y=Z local para la verificación).
             var poly = new List<XYZ> { new XYZ(yL, zb, 0), new XYZ(yR, zb, 0), new XYZ(yR, zt, 0), new XYZ(yL, zt, 0) };
             Func<Rebar, bool> inside = r =>

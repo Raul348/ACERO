@@ -44,9 +44,20 @@ namespace AceroRefuerzo.UI
             DimH(g, m.P(0, 0), m.P(b, 0), 18, $"b = {b:0.#} cm");
             DimV(g, m.P(0, 0), m.P(0, h), -18, $"h = {h:0.#} cm");
 
+            // Longitud desarrollada de las barras corridas (tramo + patas − ahorro de los dobleces).
+            double lcom = v.Has("lcom") ? v.D("lcom") * 100 : 900;
+            double Corrida(string barKey, string pataKey)
+            {
+                double dbc = v.BarMm(barKey) / 10, prolv = v.D("prol");
+                double xa = prolv > 0 ? -prolv : c, xb = prolv > 0 ? L + prolv : L - c;
+                double leg = Math.Min(Empalmes.PataEje(v.D(pataKey), dbc), h - 2 * c);
+                int nb = leg > 0 ? 2 : 0;
+                return Empalmes.Desarrollo(xb - xa + nb * leg, nb, dbc, v.BendMm(barKey) / 10);
+            }
+            double lS = Corrida("barSup", "pataSup"), lI = Corrida("barInf", "pataInf");
             Lines(g, new RectangleF(a.X + 12, a.Bottom - 78, a.Width - 16, 76),
-                ($"Superior: {nS} Ø {v.BarName("barSup")}", Steel),
-                ($"Inferior: {nI} Ø {v.BarName("barInf")}", Steel),
+                ($"Superior: {nS} Ø {v.BarName("barSup")} · L = {lS / 100:0.00} m" + (lS > lcom ? $" > {lcom / 100:0.#} m" : ""), lS > lcom ? Theme.Accent : Steel),
+                ($"Inferior: {nI} Ø {v.BarName("barInf")} · L = {lI / 100:0.00} m" + (lI > lcom ? $" > {lcom / 100:0.#} m" : ""), lI > lcom ? Theme.Accent : Steel),
                 (bsN + biN > 0 ? $"Bastones: {bsN} Ø {v.BarName("bsBar")} sup. · {biN} Ø {v.BarName("biBar")} inf." : "Sin bastones", Steel2),
                 ($"Estribos Ø {v.BarName("barEst")}  ·  rec. {c:0.#} cm", Tie));
 
@@ -119,7 +130,7 @@ namespace AceroRefuerzo.UI
 
         // ================================================================== COLUMNA
 
-        public static void Columna(Graphics g, RectangleF r, FormValues v, List<P2> polyCm, bool contour, double H)
+        public static void Columna(Graphics g, RectangleF r, FormValues v, List<P2> polyCm, bool contour, List<(double zb, double zt)> pisos)
         {
             SplitH(r, 0.62f, out RectangleF a, out RectangleF e);
             Caption(g, a, contour ? "SECCIÓN (contorno real)" : "SECCIÓN TRANSVERSAL");
@@ -201,49 +212,103 @@ namespace AceroRefuerzo.UI
                 (estribos, Tie),
                 ($"Recubrimiento {c:0.#} cm", Ink));
 
-            // --- Elevación
-            RectangleF ea = Inset(e, 30, 50, 30, 70);
-            float w = Math.Min(ea.Width * 0.45f, 70f);
+            // --- Elevación (uno o varios pisos) con los tramos de barra y sus traslapes
+            double H = pisos[pisos.Count - 1].zt - pisos[0].zb;
             double anc = v.D("anc"), emp = v.D("emp"), pata = v.D("pata");
-            double total = H + Math.Max(anc, 0) + Math.Max(emp, 0);
-            float s = (float)(ea.Height / total);
-            float top = ea.Top + (float)(Math.Max(emp, 0) * s);
-            var colR = new RectangleF(ea.Left + (ea.Width - w) / 2, top, w, (float)(H * s));
+            double bend = v.BendMm("barLong") / 10;
+            double pataEje = Empalmes.PataEje(pata, db);
+            double extra = pataEje > 0 ? pataEje - Empalmes.Ahorro90(db, bend) : 0;
+            double zIni = anc > 0 ? -anc : c, zTope = emp > 0 ? H + emp : H - c;
+            bool manual = v.Has("modoLong") && v.I("modoLong") == 1;
+
+            string errTramos = null;
+            List<(double Ini, double Fin)> tramos;
+            try
+            {
+                List<double> largos = manual ? Empalmes.LeerTramos(v.S("tramos")) : null;
+                if (manual && largos == null) throw new FormatException("Escriba la longitud de los tramos (m).");
+                tramos = largos != null
+                    ? Empalmes.UbicarTramos(zIni, largos.Select(m => m * 100).ToList(), extra, v.D("ls"))
+                    : new List<(double, double)> { (zIni, zTope) };
+            }
+            catch (Exception ex)
+            {
+                errTramos = ex.Message;
+                tramos = new List<(double, double)> { (zIni, zTope) };
+            }
+
+            double zMin = Math.Min(0, zIni) - 10, zMax = Math.Max(zTope, tramos.Max(t => t.Fin)) + 10;
+            RectangleF ea = Inset(e, 34, 50, 40, 86);
+            float w = Math.Min(ea.Width * 0.35f, 60f);
+            float sc = (float)(ea.Height / (zMax - zMin));
+            float cx = ea.Left + ea.Width * 0.42f;
+            Func<double, float> Y = z => ea.Bottom - (float)((z - zMin) * sc);
+
             if (anc > 0)
                 using (var fb = new SolidBrush(Color.FromArgb(210, 213, 218)))
-                    g.FillRectangle(fb, colR.Left - w * 0.8f, colR.Bottom, w * 2.6f, (float)(anc * s) + 6);
-            Fill(g, colR);
+                    g.FillRectangle(fb, cx - w * 1.4f, Y(0), w * 2.8f, Y(zMin) - Y(0));
 
-            string err = null;
             List<double> pos = null;
-            try { pos = Distribution.Positions(v.S("dist"), Un.Cm(H)).Select(Un.ToCm).ToList(); }
-            catch (Exception ex) { err = ex.Message; }
-            if (pos != null)
-                using (var p = new Pen(Tie, 1.3f))
-                    foreach (double z in pos)
-                    {
-                        float yy = colR.Bottom - (float)(z * s);
-                        g.DrawLine(p, colR.Left + 4, yy, colR.Right - 4, yy);
-                    }
-
-            using (var p = new Pen(Steel, 2.4f))
+            string err = null;
+            for (int i = 0; i < pisos.Count; i++)
             {
-                float zA = colR.Bottom + (float)((anc > 0 ? anc : -c) * s);
-                float zB = colR.Top - (float)((emp > 0 ? emp : -c) * s);
-                foreach (float x in new[] { colR.Left + 7, colR.Right - 7 })
+                var (zb, zt) = pisos[i];
+                var colR = new RectangleF(cx - w / 2, Y(zt), w, Y(zb) - Y(zt));
+                Fill(g, colR);
+                if (pisos.Count > 1)
+                    using (var tb = new SolidBrush(Dim)) g.DrawString($"P{i + 1}", Small, tb, colR.Left - 24, (colR.Top + colR.Bottom) / 2 - 7);
+                try
                 {
-                    g.DrawLine(p, x, zA, x, zB);
-                    if (pata > 0)
+                    var p0 = Distribution.Positions(v.S("dist"), Un.Cm(zt - zb)).Select(Un.ToCm).ToList();
+                    if (i == 0) pos = p0;
+                    using (var p = new Pen(Tie, 1f))
+                        foreach (double z in p0) g.DrawLine(p, colR.Left + 4, Y(zb + z), colR.Right - 4, Y(zb + z));
+                }
+                catch (Exception ex) { err = ex.Message; }
+            }
+
+            // Barras: cada tramo a un lado del anterior; zona de traslape resaltada.
+            for (int k = 0; k < tramos.Count; k++)
+            {
+                var (ini, fin) = tramos[k];
+                float dx = k % 2 == 1 ? 4 : 0;
+                using (var p = new Pen(k % 2 == 0 ? Steel : Steel2, 2.4f))
+                    foreach (float x in new[] { cx - w / 2 + 7 + dx, cx + w / 2 - 7 - dx })
                     {
-                        float dir = x < colR.Left + w / 2 ? 1 : -1;
-                        g.DrawLine(p, x, zA, x + dir * Math.Min((float)(pata * s) + 6, w * 0.8f), zA);
+                        g.DrawLine(p, x, Y(ini), x, Y(fin));
+                        if (k == 0 && pata > 0)
+                        {
+                            float dir = x < cx ? 1 : -1;
+                            g.DrawLine(p, x, Y(ini), x + dir * Math.Min((float)(pata * sc) + 6, w * 0.8f), Y(ini));
+                        }
                     }
+                if (k > 0)
+                {
+                    double t0 = ini, t1 = tramos[k - 1].Fin;
+                    float xr = cx + w / 2 + 6;
+                    using (var p = new Pen(Theme.Accent, 2f)) g.DrawLine(p, xr, Y(t0), xr, Y(t1));
+                    using (var tb = new SolidBrush(Theme.Accent))
+                        g.DrawString($"traslape\n{t0 / 100:0.00}–{t1 / 100:0.00} m", Small, tb, xr + 3, (Y(t0) + Y(t1)) / 2 - 14);
                 }
             }
-            DimV(g, new PointF(colR.Right, colR.Bottom), new PointF(colR.Right, colR.Top), 22, $"{H / 100:0.00} m");
-            if (err != null) Error(g, new RectangleF(e.X + 6, e.Bottom - 56, e.Width - 10, 50), err);
-            else Lines(g, new RectangleF(e.X + 6, e.Bottom - 40, e.Width - 10, 36),
-                (porNivel > 1 ? $"{pos.Count} niveles × {porNivel} = {pos.Count * porNivel} estribos" : $"{pos.Count} estribos", Tie));
+            DimV(g, new PointF(cx - w / 2, Y(pisos[0].zb)), new PointF(cx - w / 2, Y(H)), pisos.Count > 1 ? -30 : -18, $"{H / 100:0.00} m");
+
+            // Longitud desarrollada de cada tramo (incluye la pata y el doblez del primero).
+            double lcom = v.Has("lcom") ? v.D("lcom") * 100 : 900;
+            var largosTxt = tramos.Select((t, k) => t.Fin - t.Ini + (k == 0 ? extra : 0)).ToList();
+            var lineas = new List<(string, Color)>
+            {
+                ((tramos.Count > 1 ? "Tramos: " : "Barra: ") + string.Join(" · ", largosTxt.Select(l => $"{l / 100:0.00}")) + " m", Steel)
+            };
+            if (largosTxt.Any(l => l > lcom + 0.5)) lineas.Add(($"Supera la barra comercial de {lcom / 100:0.00} m", Theme.Accent));
+            if (manual && errTramos == null && tramos[tramos.Count - 1].Fin < zTope - 0.5)
+                lineas.Add(($"No llega al tope: faltan {(zTope - tramos[tramos.Count - 1].Fin) / 100:0.00} m", Theme.Accent));
+            if (pos != null)
+                lineas.Add((porNivel > 1 ? $"Estribos: {pos.Count} niveles × {porNivel} por piso" : $"Estribos: {pos.Count} por piso", Tie));
+
+            string error = errTramos ?? err;
+            if (error != null) Error(g, new RectangleF(e.X + 6, e.Bottom - 80, e.Width - 10, 76), error);
+            else Lines(g, new RectangleF(e.X + 6, e.Bottom - 80, e.Width - 10, 76), lineas.ToArray());
         }
 
         // ================================================================== ZAPATA
