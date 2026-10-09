@@ -132,6 +132,8 @@ namespace AceroRefuerzo.UI
             RectangleF sa = Inset(a, 44, 46, 30, 80);
             Map m = Map.Fit(sa, minX, minY, bx, by);
             int nBars;
+            string estribos = $"Estribos Ø {v.BarName("barEst")}: {v.S("dist")}";
+            int porNivel = 1;
 
             if (!contour)
             {
@@ -166,11 +168,28 @@ namespace AceroRefuerzo.UI
             else
             {
                 Polygon(g, polyCm.Select(p => m.P(p.X, p.Y)).ToArray());
-                List<P2> tie = Polygon2D.OffsetInward(polyCm, c + ds / 2);
                 List<P2> bars = Polygon2D.OffsetInward(polyCm, c + ds + db / 2);
-                using (var p = new Pen(Tie, Math.Max(1.5f, m.L(ds))) { LineJoin = LineJoin.Round })
-                    g.DrawPolygon(p, tie.Select(q => m.P(q.X, q.Y)).ToArray());
-                List<P2> pts = Polygon2D.PerimeterPoints(bars, v.D("smax"), Math.Max(4, v.I("nMin")));
+                var alas = v.Has("tipoEst") && v.I("tipoEst") == 0 ? Polygon2D.CoverRectangles(polyCm) : null;
+                if (alas != null && alas.Count >= 2)
+                {
+                    Color[] tonos = { Tie, Color.FromArgb(20, 70, 150), Color.FromArgb(70, 150, 230), Color.FromArgb(10, 50, 110) };
+                    for (int k = 0; k < alas.Count; k++)
+                    {
+                        var (x0, y0, x1, y1) = alas[k];
+                        Stirrup(g, m, x0 + c + ds / 2, y0 + c + ds / 2, x1 - c - ds / 2, y1 - c - ds / 2, ds, tonos[k % tonos.Length]);
+                    }
+                    estribos = $"Estribos Ø {v.BarName("barEst")}: {alas.Count} por nivel (uno por ala) · {v.S("dist")}";
+                    porNivel = alas.Count;
+                }
+                else
+                {
+                    alas = null;
+                    List<P2> tie = Polygon2D.OffsetInward(polyCm, c + ds / 2);
+                    using (var p = new Pen(Tie, Math.Max(1.5f, m.L(ds))) { LineJoin = LineJoin.Round })
+                        g.DrawPolygon(p, tie.Select(q => m.P(q.X, q.Y)).ToArray());
+                }
+                List<P2> pts = Polygon2D.PerimeterPoints(bars, v.D("smax"), Math.Max(4, v.I("nMin")),
+                    alas != null ? Polygon2D.RectCorners(alas, c + ds + db / 2) : null);
                 foreach (P2 q in pts) Dot(g, m.P(q.X, q.Y), Math.Max(2.5f, m.L(db / 2)), Steel);
                 nBars = pts.Count;
             }
@@ -179,7 +198,7 @@ namespace AceroRefuerzo.UI
 
             Lines(g, new RectangleF(a.X + 12, a.Bottom - 60, a.Width - 16, 58),
                 ($"{nBars} barras Ø {v.BarName("barLong")}", Steel),
-                ($"Estribos Ø {v.BarName("barEst")}: {v.S("dist")}", Tie),
+                (estribos, Tie),
                 ($"Recubrimiento {c:0.#} cm", Ink));
 
             // --- Elevación
@@ -223,7 +242,8 @@ namespace AceroRefuerzo.UI
             }
             DimV(g, new PointF(colR.Right, colR.Bottom), new PointF(colR.Right, colR.Top), 22, $"{H / 100:0.00} m");
             if (err != null) Error(g, new RectangleF(e.X + 6, e.Bottom - 56, e.Width - 10, 50), err);
-            else Lines(g, new RectangleF(e.X + 6, e.Bottom - 40, e.Width - 10, 36), ($"{pos.Count} estribos", Tie));
+            else Lines(g, new RectangleF(e.X + 6, e.Bottom - 40, e.Width - 10, 36),
+                (porNivel > 1 ? $"{pos.Count} niveles × {porNivel} = {pos.Count * porNivel} estribos" : $"{pos.Count} estribos", Tie));
         }
 
         // ================================================================== ZAPATA
@@ -455,7 +475,10 @@ namespace AceroRefuerzo.UI
         private static int Count(double length, double sep) =>
             length <= 0 ? 0 : (int)Math.Ceiling(length / sep - 1e-6) + 1;
 
-        private static void Stirrup(Graphics g, Map m, double x0, double y0, double x1, double y1, double ds)
+        private static void Stirrup(Graphics g, Map m, double x0, double y0, double x1, double y1, double ds) =>
+            Stirrup(g, m, x0, y0, x1, y1, ds, Tie);
+
+        private static void Stirrup(Graphics g, Map m, double x0, double y0, double x1, double y1, double ds, Color color)
         {
             PointF a = m.P(x0, y1), b = m.P(x1, y0);
             float w = Math.Max(1.6f, m.L(ds));
@@ -469,10 +492,10 @@ namespace AceroRefuerzo.UI
                 path.AddArc(rc.Right - d, rc.Bottom - d, d, d, 0, 90);
                 path.AddArc(rc.X, rc.Bottom - d, d, d, 90, 90);
                 path.CloseFigure();
-                using (var p = new Pen(Tie, w)) g.DrawPath(p, path);
+                using (var p = new Pen(color, w)) g.DrawPath(p, path);
                 // Ganchos a 135° en la esquina superior izquierda.
                 float hk = Math.Max(8f, m.L(ds * 6));
-                using (var p = new Pen(Tie, w) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+                using (var p = new Pen(color, w) { StartCap = LineCap.Round, EndCap = LineCap.Round })
                 {
                     g.DrawLine(p, rc.X + d / 3, rc.Y + d / 3, rc.X + d / 3 + hk * 0.7f, rc.Y + d / 3 + hk * 0.7f);
                     g.DrawLine(p, rc.X + d / 2.2f, rc.Y + d / 5, rc.X + d / 2.2f + hk * 0.7f, rc.Y + d / 5 + hk * 0.7f);

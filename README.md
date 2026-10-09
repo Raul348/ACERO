@@ -95,10 +95,16 @@ En columnas, los dos extremos son abajo y arriba, así que se generan las zonas 
 ### Columnas irregulares
 Con **Tipo de armado = Automático**, el programa lee la cara inferior de la columna:
 - Si es un rectángulo, usa *barras por cara*.
-- Si no (L, T, cruz, círculo, polígono), usa *contorno*:
+- Si no (L, T, cruz, U, círculo, polígono), usa *contorno*:
   - coloca una barra en cada esquina y barras intermedias en cada lado, a la **separación máxima** indicada;
-  - en secciones circulares reparte uniformemente, con un **número mínimo** de barras;
-  - el estribo es cerrado, sigue el contorno (con arcos reales en los círculos) y lleva ganchos de 135°.
+  - en secciones circulares reparte uniformemente, con un **número mínimo** de barras.
+
+**Estribos en columnas irregulares** (campo *Irregular: estribos*):
+- **Uno por cada ala** (por defecto): en secciones L, T, cruz o U coloca un **estribo rectangular por ala**, con ganchos de 135°.
+  Los estribos se traslapan en la unión y se separan un diámetro en altura para no chocar.
+  También pone una barra en cada esquina de cada estribo, para que todos abracen barras.
+- **Uno perimetral**: un solo estribo cerrado que sigue el contorno (con arcos reales en los círculos).
+- En secciones circulares o con lados inclinados siempre se usa el perimetral.
 
 ## Requisitos en el modelo
 - Vigas y muros **rectos**. Las columnas deben ser **verticales**.
@@ -120,6 +126,6 @@ Para agregar otro elemento estructural, cree una clase que implemente `IRebarMod
 
 ## Limitaciones conocidas
 - Vigas curvas, muros curvos y columnas inclinadas no están soportados.
-- En columnas irregulares el estribo es uno perimetral; no se generan estribos interiores ni grapas.
+- En columnas irregulares no se generan grapas; los estribos son por ala o perimetral.
 - Losas aligeradas (con viguetas): se arma la losa como maciza.
 - Las barras que salen del elemento (anclajes y empalmes) quedan alojadas en el mismo elemento.

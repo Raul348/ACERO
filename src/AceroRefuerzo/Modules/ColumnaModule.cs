@@ -127,7 +127,10 @@ namespace AceroRefuerzo.Modules
             form.Bar("barEst", "Diámetro", 9.525);
             form.Txt("dist", "Distribución (desde cada extremo)", "1@5, 8@10, R@25");
             form.Chk("grapas", "Rectangular: grapas en barras intermedias", true);
+            form.Choice("tipoEst", "Irregular: estribos", new[] { "Uno por cada ala (L, T, cruz)", "Uno perimetral (sigue el contorno)" }, 0);
             form.Note("Ejemplo: 1@5, 8@10, R@25 (cm). Se aplica desde abajo y desde arriba.");
+            form.Note("\"Uno por cada ala\": en secciones L, T o cruz coloca un estribo rectangular por ala, traslapados en la unión. " +
+                      "En secciones circulares o con lados inclinados se usa el perimetral.");
 
             form.Section("Opciones");
             form.Chk("cover", "Asignar el recubrimiento a la columna en Revit", true);
@@ -243,8 +246,13 @@ namespace AceroRefuerzo.Modules
             if (Polygon2D.Area(barPoly) <= 0 || Polygon2D.Area(barPoly) >= area0)
                 throw new InvalidOperationException("La sección es demasiado pequeña para el recubrimiento indicado.");
 
-            // Barras longitudinales.
-            List<P2> pts = Polygon2D.PerimeterPoints(barPoly, v.Cm("smax"), Math.Max(4, v.I("nMin")));
+            // Estribos por ala (secciones ortogonales: L, T, cruz) o un estribo perimetral.
+            var alas = v.I("tipoEst") == 0 ? Polygon2D.CoverRectangles(s.Poly) : null;
+            if (alas != null && alas.Count < 2) alas = null;
+
+            // Barras longitudinales: en las esquinas del contorno y, con estribos por ala, también en las esquinas de cada estribo.
+            List<P2> pts = Polygon2D.PerimeterPoints(barPoly, v.Cm("smax"), Math.Max(4, v.I("nMin")),
+                alas != null ? Polygon2D.RectCorners(alas, c + ds + db / 2) : null);
             P2 cen = Polygon2D.Centroid(barPoly);
             var (zA, zB) = BarEnds(f, v, c);
             double legWanted = v.Cm("pata");
@@ -268,9 +276,15 @@ namespace AceroRefuerzo.Modules
                 RebarTools.Finish(r, tL, "columna longitudinal", view, report);
             }
 
+            RebarHookType h135 = RebarTools.Hook(doc, 135, RebarStyle.StirrupTie);
+            if (alas != null)
+            {
+                EstribosPorAla(doc, host, f, v, tE, h135, alas, c + ds / 2, ds, view, report);
+                return;
+            }
+
             // Estribo que sigue el contorno (arcos reales cuando Revit puede desfasar el contorno).
             CurveLoop tieLoop = OffsetLoop(s.Outline, c + ds / 2);
-            RebarHookType h135 = RebarTools.Hook(doc, 135, RebarStyle.StirrupTie);
             Func<Rebar, bool> inside = RebarTools.TipsInside(f, tiePoly.Select(q => new XYZ(q.X, q.Y, 0)).ToList());
 
             foreach (Distribution.Run run in Distribution.Group(Distribution.Positions(v.S("dist"), f.SizeZ)))
@@ -291,6 +305,31 @@ namespace AceroRefuerzo.Modules
                 Rebar r = RebarTools.Create(doc, host, RebarStyle.StirrupTie, tE, h135, h135, f.Z, loop, inside);
                 RebarTools.LayoutFixed(r, run.Count, run.Length, f.Z);
                 RebarTools.Finish(r, tE, "columna estribo", view, report);
+            }
+        }
+
+        /// <summary>
+        /// Un estribo rectangular cerrado por cada ala de la sección. En cada nivel los estribos se separan
+        /// un diámetro en altura para que no ocupen el mismo lugar donde se traslapan.
+        /// </summary>
+        private static void EstribosPorAla(Document doc, Element host, LocalFrame f, FormValues v, RebarBarType tE,
+            RebarHookType h135, List<(double x0, double y0, double x1, double y1)> alas, double inset, double ds,
+            View view, RunReport report)
+        {
+            foreach (Distribution.Run run in Distribution.Group(Distribution.Positions(v.S("dist"), f.SizeZ)))
+            {
+                for (int k = 0; k < alas.Count; k++)
+                {
+                    var (x0, y0, x1, y1) = alas[k];
+                    double xL = x0 + inset, xR = x1 - inset, yB = y0 + inset, yT = y1 - inset;
+                    if (xR - xL < ds * 2 || yT - yB < ds * 2) continue;
+                    double z = f.MinZ + run.Start + k * ds;
+                    var rect = new List<XYZ> { new XYZ(xL, yB, 0), new XYZ(xR, yB, 0), new XYZ(xR, yT, 0), new XYZ(xL, yT, 0) };
+                    IList<Curve> loop = Geo.Poly(f.P(xL, yT, z), f.P(xR, yT, z), f.P(xR, yB, z), f.P(xL, yB, z), f.P(xL, yT, z));
+                    Rebar r = RebarTools.Create(doc, host, RebarStyle.StirrupTie, tE, h135, h135, f.Z, loop, RebarTools.TipsInside(f, rect));
+                    RebarTools.LayoutFixed(r, run.Count, run.Length, f.Z);
+                    RebarTools.Finish(r, tE, $"columna estribo ala {k + 1}", view, report);
+                }
             }
         }
 

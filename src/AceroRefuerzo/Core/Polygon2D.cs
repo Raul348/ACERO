@@ -109,59 +109,180 @@ namespace AceroRefuerzo.Core
         }
 
         /// <summary>
-        /// Posiciones de las barras longitudinales sobre un contorno: una en cada esquina y barras intermedias
-        /// en cada lado con separación no mayor que <paramref name="maxSpacing"/>. Para contornos sin esquinas
-        /// (circulares) reparte uniformemente con un mínimo de <paramref name="minBars"/> barras.
+        /// Posiciones de las barras longitudinales sobre un contorno: una en cada esquina, una en cada punto
+        /// obligatorio de <paramref name="anchors"/> (por ejemplo, las esquinas de los estribos de cada ala) y
+        /// barras intermedias con separación no mayor que <paramref name="maxSpacing"/>. Para contornos sin
+        /// esquinas (circulares) reparte uniformemente con un mínimo de <paramref name="minBars"/> barras.
         /// </summary>
-        public static List<P2> PerimeterPoints(IList<P2> poly, double maxSpacing, int minBars, double cornerDeg = 25)
+        public static List<P2> PerimeterPoints(IList<P2> poly, double maxSpacing, int minBars,
+            IList<P2> anchors = null, double cornerDeg = 25)
         {
             int n = poly.Count;
             var result = new List<P2>();
             if (n < 2 || maxSpacing <= 0) return result;
 
-            var corners = new List<int>();
+            // Longitud acumulada del contorno en cada vértice.
+            var cum = new double[n + 1];
+            for (int i = 0; i < n; i++) cum[i + 1] = cum[i] + (poly[(i + 1) % n] - poly[i]).Length;
+            double per = cum[n];
+            if (per <= 0) return result;
+            double tol = per * 1e-4;
+
+            var must = new List<double>();
             for (int i = 0; i < n; i++)
             {
                 P2 a = poly[(i - 1 + n) % n], b = poly[i], c = poly[(i + 1) % n];
                 P2 t1 = (b - a).Unit, t2 = (c - b).Unit;
                 double cos = Math.Max(-1, Math.Min(1, t1.X * t2.X + t1.Y * t2.Y));
-                if (Math.Acos(cos) * 180 / Math.PI > cornerDeg) corners.Add(i);
+                if (Math.Acos(cos) * 180 / Math.PI > cornerDeg) must.Add(cum[i]);
             }
 
-            if (corners.Count == 0)
+            if (anchors != null)
+                foreach (P2 q in anchors)
+                {
+                    double best = double.MaxValue, at = 0;
+                    for (int i = 0; i < n; i++)
+                    {
+                        P2 a = poly[i], b = poly[(i + 1) % n], ab = b - a;
+                        double l2 = ab.X * ab.X + ab.Y * ab.Y;
+                        if (l2 < 1e-18) continue;
+                        double t = Math.Max(0, Math.Min(1, ((q.X - a.X) * ab.X + (q.Y - a.Y) * ab.Y) / l2));
+                        double d = (a + ab * t - q).Length;
+                        if (d < best) { best = d; at = cum[i] + t * Math.Sqrt(l2); }
+                    }
+                    if (best < per * 2e-3) must.Add(at);
+                }
+
+            if (must.Count == 0)
             {
-                double per = 0;
-                for (int i = 0; i < n; i++) per += (poly[(i + 1) % n] - poly[i]).Length;
                 int count = Math.Max(minBars, (int)Math.Ceiling(per / maxSpacing - 1e-6));
-                for (int k = 0; k < count; k++) result.Add(AlongPath(poly, 0, n, per * k / count));
+                for (int k = 0; k < count; k++) result.Add(PointAt(poly, cum, per * k / count));
                 return result;
             }
 
-            for (int ci = 0; ci < corners.Count; ci++)
+            must.Sort();
+            var marks = new List<double>();
+            foreach (double m in must)
+                if (marks.Count == 0 || m - marks[marks.Count - 1] > tol) marks.Add(m);
+            if (marks.Count > 1 && marks[0] + per - marks[marks.Count - 1] <= tol) marks.RemoveAt(marks.Count - 1);
+
+            for (int k = 0; k < marks.Count; k++)
             {
-                int start = corners[ci];
-                int end = corners[(ci + 1) % corners.Count];
-                int steps = (end - start + n) % n;
-                if (steps == 0) steps = n;
-                double len = 0;
-                for (int k = 0; k < steps; k++) len += (poly[(start + k + 1) % n] - poly[(start + k) % n]).Length;
+                double s0 = marks[k];
+                double s1 = k + 1 < marks.Count ? marks[k + 1] : marks[0] + per;
+                double len = s1 - s0;
                 int seg = Math.Max(1, (int)Math.Ceiling(len / maxSpacing - 1e-6));
-                for (int k = 0; k < seg; k++) result.Add(AlongPath(poly, start, steps, len * k / seg));
+                for (int j2 = 0; j2 < seg; j2++) result.Add(PointAt(poly, cum, (s0 + len * j2 / seg) % per));
             }
             return result;
         }
 
-        private static P2 AlongPath(IList<P2> poly, int start, int steps, double dist)
+        private static P2 PointAt(IList<P2> poly, double[] cum, double s)
         {
             int n = poly.Count;
-            for (int k = 0; k < steps; k++)
+            for (int i = 0; i < n; i++)
             {
-                P2 a = poly[(start + k) % n], b = poly[(start + k + 1) % n];
-                double l = (b - a).Length;
-                if (dist <= l || k == steps - 1) return l < 1e-12 ? a : a + (b - a) * (Math.Min(dist, l) / l);
-                dist -= l;
+                double l = cum[i + 1] - cum[i];
+                if (s <= cum[i + 1] || i == n - 1)
+                    return l < 1e-12 ? poly[i] : poly[i] + (poly[(i + 1) % n] - poly[i]) * (Math.Max(0, Math.Min(l, s - cum[i])) / l);
             }
-            return poly[start % n];
+            return poly[0];
+        }
+
+        /// <summary>
+        /// Rectángulos (x0, y0, x1, y1) que cubren una sección ortogonal (L, T, cruz, U...), uno por cada ala.
+        /// Son rectángulos máximos que se traslapan en las uniones, como los estribos de cada ala.
+        /// Devuelve null si la sección no es ortogonal (circular, poligonal inclinada).
+        /// </summary>
+        public static List<(double x0, double y0, double x1, double y1)> CoverRectangles(IList<P2> poly)
+        {
+            int n = poly.Count;
+            if (n < 4) return null;
+            double size = Math.Max(poly.Max(p => p.X) - poly.Min(p => p.X), poly.Max(p => p.Y) - poly.Min(p => p.Y));
+            double tol = size * 1e-4;
+            for (int i = 0; i < n; i++)
+            {
+                P2 d = poly[(i + 1) % n] - poly[i];
+                if (Math.Abs(d.X) > tol && Math.Abs(d.Y) > tol) return null;
+            }
+
+            List<double> xs = Unique(poly.Select(p => p.X), tol), ys = Unique(poly.Select(p => p.Y), tol);
+            int nx = xs.Count - 1, ny = ys.Count - 1;
+            if (nx < 1 || ny < 1) return null;
+            var inside = new bool[nx, ny];
+            for (int i = 0; i < nx; i++)
+                for (int j = 0; j < ny; j++)
+                    inside[i, j] = Contains(poly, new P2((xs[i] + xs[i + 1]) / 2, (ys[j] + ys[j + 1]) / 2));
+
+            bool Full(int i0, int j0, int i1, int j1)
+            {
+                if (i0 < 0 || j0 < 0 || i1 >= nx || j1 >= ny) return false;
+                for (int i = i0; i <= i1; i++)
+                    for (int j = j0; j <= j1; j++)
+                        if (!inside[i, j]) return false;
+                return true;
+            }
+
+            // Rectángulos máximos: llenos y que no se pueden ampliar hacia ningún lado.
+            var maximos = new List<(int i0, int j0, int i1, int j1)>();
+            for (int i0 = 0; i0 < nx; i0++)
+                for (int i1 = i0; i1 < nx; i1++)
+                    for (int j0 = 0; j0 < ny; j0++)
+                        for (int j1 = j0; j1 < ny; j1++)
+                            if (Full(i0, j0, i1, j1) && !Full(i0 - 1, j0, i1, j1) && !Full(i0, j0, i1 + 1, j1)
+                                && !Full(i0, j0 - 1, i1, j1) && !Full(i0, j0, i1, j1 + 1))
+                                maximos.Add((i0, j0, i1, j1));
+
+            // Cobertura voraz: en cada paso el rectángulo que cubre más celdas libres (y luego el de mayor área).
+            var libres = new HashSet<(int, int)>();
+            for (int i = 0; i < nx; i++)
+                for (int j = 0; j < ny; j++)
+                    if (inside[i, j]) libres.Add((i, j));
+
+            var result = new List<(double, double, double, double)>();
+            while (libres.Count > 0)
+            {
+                int bestCount = 0;
+                double bestArea = 0;
+                (int i0, int j0, int i1, int j1) best = default;
+                foreach (var r in maximos)
+                {
+                    int c = 0;
+                    for (int i = r.i0; i <= r.i1; i++)
+                        for (int j = r.j0; j <= r.j1; j++)
+                            if (libres.Contains((i, j))) c++;
+                    double area = (xs[r.i1 + 1] - xs[r.i0]) * (ys[r.j1 + 1] - ys[r.j0]);
+                    if (c > bestCount || (c == bestCount && c > 0 && area > bestArea)) { bestCount = c; bestArea = area; best = r; }
+                }
+                if (bestCount == 0) break;
+                for (int i = best.i0; i <= best.i1; i++)
+                    for (int j = best.j0; j <= best.j1; j++)
+                        libres.Remove((i, j));
+                result.Add((xs[best.i0], ys[best.j0], xs[best.i1 + 1], ys[best.j1 + 1]));
+            }
+            return result;
+        }
+
+        /// <summary>Esquinas de los rectángulos reducidos hacia adentro una distancia <paramref name="inset"/>.</summary>
+        public static List<P2> RectCorners(IEnumerable<(double x0, double y0, double x1, double y1)> rects, double inset)
+        {
+            var pts = new List<P2>();
+            foreach (var r in rects)
+            {
+                pts.Add(new P2(r.x0 + inset, r.y0 + inset));
+                pts.Add(new P2(r.x1 - inset, r.y0 + inset));
+                pts.Add(new P2(r.x1 - inset, r.y1 - inset));
+                pts.Add(new P2(r.x0 + inset, r.y1 - inset));
+            }
+            return pts;
+        }
+
+        private static List<double> Unique(IEnumerable<double> values, double tol)
+        {
+            var list = new List<double>();
+            foreach (double v in values.OrderBy(v => v))
+                if (list.Count == 0 || v - list[list.Count - 1] > tol) list.Add(v);
+            return list;
         }
     }
 }
