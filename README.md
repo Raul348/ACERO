@@ -10,6 +10,7 @@ Complemento (add-in) en **C#** para colocar acero de refuerzo en Revit desde una
 | **Losas** | Malla inferior y superior (temperatura) que sigue el contorno real de la losa (Refuerzo de Área) |
 | **Muros** | Malla simple o doble, acero vertical con anclaje y empalme, acero horizontal con ganchos |
 | **Acero integral** | Menú con las 5 figuras para elegir el elemento |
+| **Corte de barras** | Optimizador de corte: cómo cortar las barras comerciales (9 m, 12 m…) con el menor desperdicio, con planilla para Excel |
 | **Diámetros** | Crea los diámetros estándar que falten: 6 mm, 8 mm, 3/8", 12 mm, 1/2", 5/8", 3/4", 1", 1 3/8" |
 
 Cada botón tiene su **figurita** en la cinta, y cada ventana muestra la **figura del elemento a escala**.
@@ -125,6 +126,25 @@ Con 0 se usa la que ya tenga configurada Revit. Como es una configuración del t
 
 **Planilla.** Al terminar, *Mostrar detalles* incluye una planilla con cada grupo de barras: diámetro, cantidad y longitud por barra.
 La longitud es la que calcula Revit, con patas y dobleces.
+
+### Optimizador de corte de barras
+El botón **Corte de barras** no coloca acero: lee las barras que ya están en el modelo y calcula cómo cortarlas
+de las barras comerciales con el menor desperdicio (problema de corte unidimensional).
+
+1. Opcionalmente seleccione barras o elementos (vigas, columnas, losas…): se toman las barras alojadas en ellos.
+2. Pulse **Corte de barras** e indique las **longitudes comerciales** (por ejemplo `9, 12`), la pérdida por corte,
+   el traslape para las piezas más largas que la barra y el alcance (todo el proyecto, la selección o la vista activa).
+3. La figura muestra en tiempo real el **desperdicio por diámetro** y los **patrones de corte** a escala.
+4. Pulse **Generar planilla**: se guarda un **CSV para Excel** con el resumen por diámetro, cada patrón de corte
+   (cuántas veces se repite, piezas y sobra) y la lista de piezas del modelo.
+
+Cómo decide:
+- Las longitudes son las que calcula Revit para cada barra (con patas y dobleces), redondeadas al centímetro.
+- Para cada diámetro prueba varias heurísticas (primer ajuste y mejor ajuste decreciente, con cada longitud comercial
+  como barra base) y se queda con la que **menos acero comercial consume**; luego cada barra pasa a la longitud comercial
+  más corta en la que caben sus piezas.
+- Las piezas más largas que la barra comercial se **parten con traslape** (configurable; 0 = 40 diámetros) y se cuenta el empalme.
+- Los sobrantes mayores que el **retazo aprovechable** se informan aparte, para reutilizarlos en obra.
 
 ## Requisitos en el modelo
 - Vigas y muros **rectos**. Las columnas deben ser **verticales**.

@@ -47,6 +47,16 @@ namespace AceroRefuerzo
                 Image = Icons.Ribbon(Icons.Extra.Integral, 16)
             };
             tools.AddItem(integral);
+            var corte = new PushButtonData("AceroCorte", "Corte de\nbarras", path, typeof(CmdCorte).FullName)
+            {
+                ToolTip = "Optimizador de corte: cómo cortar las barras comerciales (9 m, 12 m...) con el menor desperdicio.",
+                LongDescription = "Lee las barras del proyecto (o de la selección), las agrupa por diámetro y longitud y calcula " +
+                                  "los patrones de corte. Muestra el desperdicio por diámetro y guarda una planilla de corte para Excel. " +
+                                  "No modifica el modelo.",
+                LargeImage = Icons.Ribbon(Icons.Extra.Corte, 32),
+                Image = Icons.Ribbon(Icons.Extra.Corte, 16)
+            };
+            tools.AddItem(corte);
             var diam = new PushButtonData("AceroDiametros", "Diámetros", path, typeof(CmdDiametros).FullName)
             {
                 ToolTip = "Crea los diámetros estándar que falten (6 mm, 8 mm, 3/8\", 12 mm, 1/2\", 5/8\", 3/4\", 1\", 1 3/8\").",

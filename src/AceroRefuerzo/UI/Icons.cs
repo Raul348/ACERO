@@ -9,7 +9,7 @@ namespace AceroRefuerzo.UI
     /// <summary>Íconos ("figuritas") dibujados por código para la cinta de Revit y el menú principal.</summary>
     internal static partial class Icons
     {
-        public enum Extra { Integral, Diametros, Ayuda }
+        public enum Extra { Integral, Diametros, Ayuda, Corte }
 
         private static readonly Color Concrete = Color.FromArgb(200, 204, 210);
         private static readonly Color Edge = Color.FromArgb(90, 96, 105);
@@ -123,6 +123,32 @@ namespace AceroRefuerzo.UI
                             x += d + 1.2f;
                         }
                         g.DrawLine(ep, 1 * k, 27 * k, 31 * k, 27 * k);
+                    }
+                    break;
+
+                case Extra.Corte:
+                    // Barra comercial partida en piezas (colores) con un sobrante gris y la marca del corte.
+                    using (var ep = new Pen(Edge, Math.Max(1f, k)))
+                    using (var rb = new SolidBrush(Red))
+                    using (var bb = new SolidBrush(Blue))
+                    using (var ob = new SolidBrush(Color.FromArgb(225, 120, 20)))
+                    using (var gb = new SolidBrush(Concrete))
+                    {
+                        g.FillRectangle(rb, 2 * k, 12 * k, 13 * k, 8 * k);
+                        g.FillRectangle(bb, 15 * k, 12 * k, 9 * k, 8 * k);
+                        g.FillRectangle(ob, 24 * k, 12 * k, 4 * k, 8 * k);
+                        g.FillRectangle(gb, 28 * k, 12 * k, 2 * k, 8 * k);
+                        g.DrawRectangle(ep, 2 * k, 12 * k, 28 * k, 8 * k);
+                        g.DrawLine(ep, 15 * k, 12 * k, 15 * k, 20 * k);
+                        g.DrawLine(ep, 24 * k, 12 * k, 24 * k, 20 * k);
+                        g.DrawLine(ep, 28 * k, 12 * k, 28 * k, 20 * k);
+                    }
+                    using (var cut = new Pen(Color.FromArgb(34, 47, 68), Math.Max(1f, 1.6f * k)) { DashStyle = DashStyle.Dash })
+                        g.DrawLine(cut, 15 * k, 3 * k, 15 * k, 29 * k);
+                    using (var tb = new SolidBrush(Color.FromArgb(34, 47, 68)))
+                    {
+                        g.FillPolygon(tb, new[] { P(12, 3, k), P(18, 3, k), P(15, 8, k) });
+                        g.FillPolygon(tb, new[] { P(12, 29, k), P(18, 29, k), P(15, 24, k) });
                     }
                     break;
 
