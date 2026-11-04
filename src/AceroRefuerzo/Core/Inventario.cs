@@ -76,9 +76,9 @@ namespace AceroRefuerzo.Core
             bool deAcero = comentario.StartsWith("ACERO - ", StringComparison.Ordinal);
             string origen = deAcero ? comentario.Substring(8) : !string.IsNullOrWhiteSpace(comentario) ? comentario : Anfitrion(doc, e);
 
-            // Conjuntos de longitud variable: la longitud de cada barra se mide por su eje
-            // y se le suma lo que Revit agrega a la primera barra (ganchos, extensiones).
-            if (e is Rebar rebar && EsVariable(rebar) && n > 1)
+            // Conjuntos de longitud variable (la longitud total no es largo × cantidad): la longitud de cada
+            // barra se mide por su eje y se le suma lo que Revit agrega a la primera barra (ganchos, extensiones).
+            if (e is Rebar rebar && n > 1 && Math.Abs(total - largo * n) > Un.Cm(1))
             {
                 var largos = new List<double>();
                 try
@@ -102,12 +102,6 @@ namespace AceroRefuerzo.Core
             }
 
             yield return new PiezaCorte { Bar = tipo.Name, Mm = Un.ToMm(tipo.BarModelDiameter), LargoCm = Un.ToCm(largo), Cantidad = n, Origen = origen, DeAcero = deAcero };
-        }
-
-        private static bool EsVariable(Rebar r)
-        {
-            try { return r.DistributionType == DistributionType.VaryingLength; }
-            catch (Exception) { return false; }
         }
 
         private static double Eje(Rebar r, int i)
