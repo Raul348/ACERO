@@ -20,18 +20,20 @@ namespace AceroRefuerzo.UI
 
         // ================================================================== VIGA
 
-        public static void Viga(Graphics g, RectangleF r, FormValues v, double b, double h, double L)
+        public static void Viga(Graphics g, RectangleF r, FormValues v, double b, double h, double L, List<(double xa, double xb)> luces)
         {
+            if (luces == null || luces.Count == 0) luces = new List<(double, double)> { (0, L) };
+            bool continua = v.Has("modoLong") && v.I("modoLong") == 1 && luces.Count >= 1;
             SplitH(r, 0.40f, out RectangleF a, out RectangleF e);
             Caption(g, a, "SECCIÓN TRANSVERSAL");
-            Caption(g, e, "ELEVACIÓN (esquema)");
+            Caption(g, e, luces.Count > 1 ? $"ELEVACIÓN: VIGA CONTINUA DE {luces.Count} LUCES (esquema)" : "ELEVACIÓN (esquema)");
 
             double c = v.D("rec"), ds = v.BarMm("barEst") / 10, dbS = v.BarMm("barSup") / 10, dbI = v.BarMm("barInf") / 10;
             int nS = v.I("nSup"), nI = v.I("nInf"), bsN = v.I("bsN"), biN = v.I("biN");
             double dbBs = v.BarMm("bsBar") / 10, dbBi = v.BarMm("biBar") / 10;
 
             // --- Sección
-            RectangleF sa = Inset(a, 40, 46, 30, 90);
+            RectangleF sa = Inset(a, 40, 46, 30, 112);
             Map m = Map.Fit(sa, 0, 0, b, h);
             ConcreteRect(g, m, 0, 0, b, h);
             Stirrup(g, m, c + ds / 2, c + ds / 2, b - c - ds / 2, h - c - ds / 2, ds);
@@ -44,77 +46,166 @@ namespace AceroRefuerzo.UI
             DimH(g, m.P(0, 0), m.P(b, 0), 18, $"b = {b:0.#} cm");
             DimV(g, m.P(0, 0), m.P(0, h), -18, $"h = {h:0.#} cm");
 
-            // Longitud desarrollada de las barras corridas (tramo + patas − ahorro de los dobleces).
-            double lcom = v.Has("lcom") ? v.D("lcom") * 100 : 900;
-            double Corrida(string barKey, string pataKey)
+            // --- Barras corridas: una pieza, o tramos óptimos con traslapes en la zona permitida (vigas continuas).
+            double prol = v.D("prol");
+            double xr0 = luces[0].xa, xr1 = luces[luces.Count - 1].xb;
+            double x0 = prol > 0 ? xr0 - prol : xr0 + c, x1 = prol > 0 ? xr1 + prol : xr1 - c;
+            double[] comerciales;
+            try { comerciales = Traslapes.Comerciales(v, x => x); } catch (Exception) { comerciales = new[] { 900.0 }; }
+            double lcom = comerciales.Max();
+            string errTramos = null;
+
+            (List<(double Ini, double Fin)> tramos, List<double> largos, double leg, double db, double ls) Fila(string barKey, string pataKey, string zonaKey)
             {
-                double dbc = v.BarMm(barKey) / 10, prolv = v.D("prol");
-                double xa = prolv > 0 ? -prolv : c, xb = prolv > 0 ? L + prolv : L - c;
-                double leg = Math.Min(Empalmes.PataEje(v.D(pataKey), dbc), h - 2 * c);
-                int nb = leg > 0 ? 2 : 0;
-                return Empalmes.Desarrollo(xb - xa + nb * leg, nb, dbc, v.BendMm(barKey) / 10);
+                double dbc = v.BarMm(barKey) / 10;
+                double legc = Math.Min(Empalmes.PataEje(v.D(pataKey), dbc), h - 2 * c);
+                double extra = legc > 0 ? legc - Empalmes.Ahorro90(dbc, v.BendMm(barKey) / 10) : 0;
+                double lsc = Traslapes.Ls(v, "ls", dbc, x => x);
+                List<(double, double)> tr = null;
+                if (continua)
+                {
+                    try
+                    {
+                        Traslapes.Resultado opt = Traslapes.Viga(v, luces, h, x0, x1, extra, extra, dbc, zonaKey, x => x);
+                        if (opt == null) errTramos = errTramos ?? "No hay forma de ubicar los traslapes en la zona permitida con esas barras comerciales.";
+                        else tr = opt.Tramos;
+                    }
+                    catch (Exception ex) { errTramos = errTramos ?? ex.Message; }
+                }
+                if (tr == null) tr = new List<(double, double)> { (x0, x1) };
+                var lg = tr.Select((t, k) => t.Item2 - t.Item1 + (k == 0 ? extra : 0) + (k == tr.Count - 1 ? extra : 0)).ToList();
+                return (tr, lg, legc, dbc, lsc);
             }
-            double lS = Corrida("barSup", "pataSup"), lI = Corrida("barInf", "pataInf");
-            Lines(g, new RectangleF(a.X + 12, a.Bottom - 78, a.Width - 16, 76),
-                ($"Superior: {nS} Ø {v.BarName("barSup")} · L = {lS / 100:0.00} m" + (lS > lcom ? $" > {lcom / 100:0.#} m" : ""), lS > lcom ? Theme.Accent : Steel),
-                ($"Inferior: {nI} Ø {v.BarName("barInf")} · L = {lI / 100:0.00} m" + (lI > lcom ? $" > {lcom / 100:0.#} m" : ""), lI > lcom ? Theme.Accent : Steel),
+            var sup = Fila("barSup", "pataSup", "zonaSup");
+            var inf = Fila("barInf", "pataInf", "zonaInf");
+
+            (string, Color) Linea(string titulo, int n, string barKey, (List<(double Ini, double Fin)> tramos, List<double> largos, double leg, double db, double ls) fila)
+            {
+                bool pasa = fila.largos.Any(l => l > lcom + 0.5);
+                string txt = fila.tramos.Count == 1
+                    ? $"{titulo}: {n} Ø {v.BarName(barKey)} · L = {fila.largos[0] / 100:0.00} m" + (pasa ? $" > {lcom / 100:0.#} m" : "")
+                    : $"{titulo}: {n} Ø {v.BarName(barKey)} · {fila.tramos.Count} tramos: " + string.Join(" + ", fila.largos.Select(l => $"{l / 100:0.00}")) + " m";
+                if (fila.tramos.Count > 1 && !pasa)
+                {
+                    string corte = CorteTexto(fila.largos, n, comerciales, v.BarName(barKey), fila.db);
+                    int i = corte.IndexOf("desperdicio", StringComparison.Ordinal);
+                    if (i >= 0) txt += " · " + corte.Substring(i);
+                }
+                return (txt, pasa ? Theme.Accent : Steel);
+            }
+            Lines(g, new RectangleF(a.X + 12, a.Bottom - 100, a.Width - 16, 98),
+                Linea("Superior", nS, "barSup", sup),
+                Linea("Inferior", nI, "barInf", inf),
                 (bsN + biN > 0 ? $"Bastones: {bsN} Ø {v.BarName("bsBar")} sup. · {biN} Ø {v.BarName("biBar")} inf." : "Sin bastones", Steel2),
                 ($"Estribos Ø {v.BarName("barEst")}  ·  rec. {c:0.#} cm", Tie));
 
             // --- Elevación
-            RectangleF ea = Inset(e, 34, 60, 34, 110);
-            float hpx = Math.Min(ea.Height * 0.55f, Math.Max(70f, ea.Width * (float)(h / Math.Max(L, 1)) * 2.5f));
+            RectangleF ea = Inset(e, 34, 60, 34, 118);
+            double Ltot = Math.Max(1, xr1 - xr0);
+            float hpx = Math.Min(ea.Height * 0.55f, Math.Max(60f, ea.Width * (float)(h / Ltot) * 2.5f));
             float y0 = ea.Top + (ea.Height - hpx) / 2;
             var beam = new RectangleF(ea.Left, y0, ea.Width, hpx);
-            double sx = beam.Width / L, sz = hpx / h;
+            double sx = beam.Width / Ltot, sz = hpx / h;
             float col = 16;
+            Func<double, float> X = x => beam.Left + (float)((x - xr0) * sx);
+            Func<double, float> Z = z => beam.Bottom - (float)(z * sz);
+
             using (var colB = new SolidBrush(Color.FromArgb(200, 203, 208)))
             {
                 g.FillRectangle(colB, beam.Left - col, beam.Top - 30, col, hpx + 60);
                 g.FillRectangle(colB, beam.Right, beam.Top - 30, col, hpx + 60);
+                for (int i = 0; i + 1 < luces.Count; i++)
+                {
+                    float xa = X(luces[i].xb), xb = X(luces[i + 1].xa);
+                    g.FillRectangle(colB, xa, beam.Top - 30, Math.Max(3, xb - xa), hpx + 60);
+                }
             }
-            Fill(g, beam);
+            foreach (var (xa, xb) in luces)
+                Fill(g, new RectangleF(X(xa), beam.Top, X(xb) - X(xa), hpx));
 
-            Func<double, float> X = x => beam.Left + (float)(x * sx);
-            Func<double, float> Z = z => beam.Bottom - (float)(z * sz);
+            // Zonas permitidas para los traslapes (verde): superior en la parte alta, inferior en la baja.
+            if (continua)
+                using (var zb2 = new SolidBrush(Color.FromArgb(90, 120, 200, 120)))
+                {
+                    foreach (var (za, zc) in Traslapes.ZonasViga(luces, h, v.I("zonaSup")))
+                        g.FillRectangle(zb2, X(za), beam.Top + 1, Math.Max(1, X(zc) - X(za)), hpx * 0.35f);
+                    foreach (var (za, zc) in Traslapes.ZonasViga(luces, h, v.I("zonaInf")))
+                        g.FillRectangle(zb2, X(za), beam.Bottom - hpx * 0.35f - 1, Math.Max(1, X(zc) - X(za)), hpx * 0.35f);
+                }
 
             List<double> pos = null;
             string err = null;
-            try { pos = Distribution.Positions(v.S("dist"), Un.Cm(L)).Select(Un.ToCm).ToList(); }
+            try
+            {
+                foreach (var (xa, xb) in luces)
+                {
+                    var p0 = Distribution.Positions(v.S("dist"), Un.Cm(xb - xa)).Select(Un.ToCm).ToList();
+                    if (pos == null) pos = p0;
+                    using (var p = new Pen(Tie, 1.2f))
+                        foreach (double x in p0) g.DrawLine(p, X(xa + x), Z(c), X(xa + x), Z(h - c));
+                }
+            }
             catch (Exception ex) { err = ex.Message; }
 
-            if (pos != null)
-                using (var p = new Pen(Tie, 1.4f))
-                    foreach (double x in pos) g.DrawLine(p, X(x), Z(c), X(x), Z(h - c));
-
-            double pS = v.D("pataSup"), pI = v.D("pataInf"), prol = v.D("prol");
-            double x0 = prol > 0 ? -prol : c, x1 = prol > 0 ? L + prol : L - c;
             double zt = h - c - ds - dbS / 2, zb = c + ds + dbI / 2;
-            using (var p = new Pen(Steel, 2.6f))
+            void Corrida((List<(double Ini, double Fin)> tramos, List<double> largos, double leg, double db, double ls) fila, double z, int dir)
             {
-                LongBar(g, p, X, Z, x0, x1, zt, -Math.Min(pS, h - 2 * c), true, true);
-                LongBar(g, p, X, Z, x0, x1, zb, Math.Min(pI, h - 2 * c), true, true);
+                for (int k = 0; k < fila.tramos.Count; k++)
+                {
+                    var (ini, fin) = fila.tramos[k];
+                    double zk = z + (k % 2 == 1 ? dir * fila.db : 0);
+                    using (var p = new Pen(k % 2 == 0 ? Steel : Steel2, 2.6f))
+                        LongBar(g, p, X, Z, ini, fin, zk, dir * fila.leg, k == 0, k == fila.tramos.Count - 1);
+                    if (k > 0)
+                        using (var p = new Pen(Theme.Accent, 1.5f))
+                        {
+                            float ya = Z(zk) + dir * 5, xa = X(ini), xb = X(ini + fila.ls);
+                            g.DrawLine(p, xa, ya, xb, ya);
+                            g.DrawLine(p, xa, ya - 3, xa, ya + 3);
+                            g.DrawLine(p, xb, ya - 3, xb, ya + 3);
+                        }
+                }
             }
+            Corrida(sup, zt, -1);
+            Corrida(inf, zb, +1);
+
             using (var p = new Pen(Steel2, 2.2f))
             {
                 if (bsN > 0)
                 {
-                    double z2 = zt - Math.Max(2.5, dbBs) - dbS / 2 - dbBs / 2, len = v.D("bsFr") * L;
-                    LongBar(g, p, X, Z, x0, len, z2, -Math.Min(pS, z2 - c), true, false);
-                    LongBar(g, p, X, Z, L - len, x1, z2, -Math.Min(pS, z2 - c), false, true);
+                    double z2 = zt - Math.Max(2.5, dbBs) - dbS / 2 - dbBs / 2;
+                    double Len(int i) => v.D("bsFr") * (luces[i].xb - luces[i].xa);
+                    int last = luces.Count - 1;
+                    LongBar(g, p, X, Z, x0, luces[0].xa + Len(0), z2, -Math.Min(v.D("pataSup"), z2 - c), true, false);
+                    LongBar(g, p, X, Z, luces[last].xb - Len(last), x1, z2, -Math.Min(v.D("pataSup"), z2 - c), false, true);
+                    for (int i = 0; i + 1 < luces.Count; i++)
+                        LongBar(g, p, X, Z, luces[i].xb - Len(i), luces[i + 1].xa + Len(i + 1), z2, 0, false, false);
                 }
                 if (biN > 0)
                 {
-                    double z2 = zb + Math.Max(2.5, dbBi) + dbI / 2 + dbBi / 2, len = v.D("biFr") * L;
-                    LongBar(g, p, X, Z, L / 2 - len / 2, L / 2 + len / 2, z2, 0, false, false);
+                    double z2 = zb + Math.Max(2.5, dbBi) + dbI / 2 + dbBi / 2;
+                    foreach (var (xa, xb) in luces)
+                    {
+                        double len = v.D("biFr") * (xb - xa), mid = (xa + xb) / 2;
+                        LongBar(g, p, X, Z, mid - len / 2, mid + len / 2, z2, 0, false, false);
+                    }
                 }
             }
-            DimH(g, new PointF(beam.Left, beam.Bottom), new PointF(beam.Right, beam.Bottom), 40, $"L libre = {L / 100:0.00} m");
+            DimH(g, new PointF(beam.Left, beam.Bottom), new PointF(beam.Right, beam.Bottom), 40,
+                luces.Count > 1 ? $"L total = {Ltot / 100:0.00} m ({luces.Count} luces)" : $"L libre = {L / 100:0.00} m");
 
-            if (err != null) Error(g, new RectangleF(e.X + 12, e.Bottom - 60, e.Width - 20, 50), err);
-            else Lines(g, new RectangleF(e.X + 12, e.Bottom - 56, e.Width - 20, 52),
-                ($"Estribos: {v.S("dist")}", Tie),
-                ($"{pos.Count} estribos por viga", Ink));
+            var abajo = new List<(string, Color)> { ($"Estribos: {v.S("dist")}", Tie) };
+            if (pos != null) abajo.Add((luces.Count > 1 ? $"{pos.Count} estribos en la primera viga" : $"{pos.Count} estribos por viga", Ink));
+            if (continua && errTramos == null)
+            {
+                string Pos(List<(double Ini, double Fin)> tr) => tr.Count > 1
+                    ? string.Join(", ", tr.Skip(1).Select(t => $"{(t.Ini - xr0) / 100:0.00}"))
+                    : "sin traslape";
+                abajo.Add(($"Traslapes (m desde el inicio): sup. {Pos(sup.tramos)} · inf. {Pos(inf.tramos)}", Theme.Accent));
+            }
+            string error = err ?? errTramos;
+            if (error != null) Error(g, new RectangleF(e.X + 12, e.Bottom - 74, e.Width - 20, 70), error);
+            else Lines(g, new RectangleF(e.X + 12, e.Bottom - 74, e.Width - 20, 70), abajo.ToArray());
         }
 
         private static void LongBar(Graphics g, Pen p, Func<double, float> X, Func<double, float> Z,
@@ -219,17 +310,30 @@ namespace AceroRefuerzo.UI
             double pataEje = Empalmes.PataEje(pata, db);
             double extra = pataEje > 0 ? pataEje - Empalmes.Ahorro90(db, bend) : 0;
             double zIni = anc > 0 ? -anc : c, zTope = emp > 0 ? H + emp : H - c;
-            bool manual = v.Has("modoLong") && v.I("modoLong") == 1;
+            int modoLong = v.Has("modoLong") ? v.I("modoLong") : 0;
+            bool manual = modoLong == 1, optimo = modoLong == 2;
+            double ls = Traslapes.Ls(v, "ls", db, x => x);
 
             string errTramos = null;
             List<(double Ini, double Fin)> tramos;
+            List<(double a, double b)> zonas = null;
             try
             {
-                List<double> largos = manual ? Empalmes.LeerTramos(v.S("tramos")) : null;
-                if (manual && largos == null) throw new FormatException("Escriba la longitud de los tramos (m).");
-                tramos = largos != null
-                    ? Empalmes.UbicarTramos(zIni, largos.Select(m => m * 100).ToList(), extra, v.D("ls"))
-                    : new List<(double, double)> { (zIni, zTope) };
+                if (optimo)
+                {
+                    zonas = Traslapes.ZonasColumna(pisos, v.I("zonaCol"), v.D("zonaIni"), v.D("zonaFin"));
+                    Traslapes.Resultado opt = Traslapes.Columna(v, pisos, zIni, zTope, extra, db, x => x);
+                    if (opt == null) throw new InvalidOperationException("No hay solución con esa zona permitida y esas barras comerciales.");
+                    tramos = opt.Tramos;
+                }
+                else
+                {
+                    List<double> largos = manual ? Empalmes.LeerTramos(v.S("tramos")) : null;
+                    if (manual && largos == null) throw new FormatException("Escriba la longitud de los tramos (m).");
+                    tramos = largos != null
+                        ? Empalmes.UbicarTramos(zIni, largos.Select(m => m * 100).ToList(), extra, ls)
+                        : new List<(double, double)> { (zIni, zTope) };
+                }
             }
             catch (Exception ex)
             {
@@ -257,6 +361,10 @@ namespace AceroRefuerzo.UI
                 Fill(g, colR);
                 if (pisos.Count > 1)
                     using (var tb = new SolidBrush(Dim)) g.DrawString($"P{i + 1}", Small, tb, colR.Left - 24, (colR.Top + colR.Bottom) / 2 - 7);
+                if (zonas != null)
+                    using (var zb2 = new SolidBrush(Color.FromArgb(90, 120, 200, 120)))
+                        foreach (var (za, zc) in zonas.Where(q => q.a >= zb - 0.5 && q.b <= zt + 0.5))
+                            g.FillRectangle(zb2, colR.Left + 1, Y(zc), colR.Width - 2, Y(za) - Y(zc));
                 try
                 {
                     var p0 = Distribution.Positions(v.S("dist"), Un.Cm(zt - zb)).Select(Un.ToCm).ToList();
@@ -294,13 +402,17 @@ namespace AceroRefuerzo.UI
             DimV(g, new PointF(cx - w / 2, Y(pisos[0].zb)), new PointF(cx - w / 2, Y(H)), pisos.Count > 1 ? -30 : -18, $"{H / 100:0.00} m");
 
             // Longitud desarrollada de cada tramo (incluye la pata y el doblez del primero).
-            double lcom = v.Has("lcom") ? v.D("lcom") * 100 : 900;
+            double[] comerciales;
+            try { comerciales = Traslapes.Comerciales(v, x => x); } catch (Exception) { comerciales = new[] { 900.0 }; }
+            double lcom = comerciales.Max();
             var largosTxt = tramos.Select((t, k) => t.Fin - t.Ini + (k == 0 ? extra : 0)).ToList();
             var lineas = new List<(string, Color)>
             {
                 ((tramos.Count > 1 ? "Tramos: " : "Barra: ") + string.Join(" · ", largosTxt.Select(l => $"{l / 100:0.00}")) + " m", Steel)
             };
             if (largosTxt.Any(l => l > lcom + 0.5)) lineas.Add(($"Supera la barra comercial de {lcom / 100:0.00} m", Theme.Accent));
+            else if (optimo && errTramos == null)
+                lineas.Add((CorteTexto(largosTxt, nBars, comerciales, v.BarName("barLong"), db), Color.FromArgb(40, 130, 70)));
             if (manual && errTramos == null && tramos[tramos.Count - 1].Fin < zTope - 0.5)
                 lineas.Add(($"No llega al tope: faltan {(zTope - tramos[tramos.Count - 1].Fin) / 100:0.00} m", Theme.Accent));
             if (pos != null)
@@ -309,6 +421,17 @@ namespace AceroRefuerzo.UI
             string error = errTramos ?? err;
             if (error != null) Error(g, new RectangleF(e.X + 6, e.Bottom - 80, e.Width - 10, 76), error);
             else Lines(g, new RectangleF(e.X + 6, e.Bottom - 80, e.Width - 10, 76), lineas.ToArray());
+        }
+
+        /// <summary>Resumen del corte de los tramos de un elemento: barras comerciales por juego y desperdicio.</summary>
+        private static string CorteTexto(IList<double> largosCm, int nBarras, double[] comercialesCm, string barName, double dbCm)
+        {
+            var piezas = largosCm.Select(l => new PiezaCorte { Bar = barName, Mm = dbCm * 10, LargoCm = l, Cantidad = Math.Max(1, nBarras) }).ToList();
+            ResultadoCorte r = Corte.Optimizar(piezas, new OpcionesCorte { ComercialesCm = comercialesCm, Empalmar = false, RetazoMinCm = 0 });
+            if (r.Diametros.Count == 0 || r.Diametros[0].BarrasComerciales == 0) return "";
+            CorteDiametro d = r.Diametros[0];
+            string barras = string.Join(" + ", d.BarrasPorComercial.Select(kv => $"{kv.Value} de {kv.Key / 100:0.##} m"));
+            return $"Corte: {barras} · desperdicio {d.Porcentaje:0.0} %";
         }
 
         // ================================================================== ZAPATA

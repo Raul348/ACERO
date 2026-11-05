@@ -117,6 +117,26 @@ Las barras vienen de **9 m**. En el campo **Longitud de las barras** de la venta
   - El programa **no decide dónde van los traslapes**: quedan donde caen con las longitudes que usted indica, incluso en el primer piso.
   - La figura muestra los pisos, cada tramo y la cota de cada traslape. Avisa si un tramo supera la barra comercial o si los tramos no llegan al tope.
 
+### Traslapes óptimos (columnas y vigas continuas)
+Con **Tramos óptimos** (columnas) o **Vigas continuas** (vigas) el programa decide **dónde empalmar** para que los
+tramos aprovechen las barras comerciales:
+
+- **Zona permitida**: usted la elige y el programa solo coloca traslapes dentro de ella.
+  - Columnas, en cada piso: tercio central, mitad central, personalizada (desde / hasta la base del piso) o cualquier punto.
+  - Vigas, en cada luz y por separado para el acero superior e inferior: tercio central, cuartos extremos fuera de 2h
+    del apoyo, fuera de 2h del apoyo, o cualquier punto. Nunca se traslapa sobre un apoyo.
+  - Verifique la zona con su norma (E.060, ACI 318): el programa no la impone.
+- **Longitudes comerciales** (`9, 12`) y **traslape** (0 = 40 diámetros).
+- El programa prueba todos los puntos de corte posibles (cada 5 cm dentro de las zonas) y elige, por programación dinámica,
+  la combinación con menor **desperdicio de corte + acero de traslape**, con una penalización por cada empalme para no
+  empalmar de más. Si cabe en una sola barra comercial, no empalma.
+- **Vigas continuas**: seleccione todas las vigas alineadas de un eje (misma sección, separadas por columnas de hasta 1.5 m).
+  Se unen, el acero corrido pasa sobre los apoyos intermedios (patas solo en los extremos) y los bastones superiores quedan
+  continuos sobre cada apoyo intermedio. Los estribos siguen siendo por viga.
+- La figura muestra las zonas permitidas (verde), cada tramo, la posición de los traslapes y el corte resultante
+  (barras comerciales por juego y desperdicio). El resumen final lista los tramos y las cotas de los traslapes.
+- Las barras así colocadas entran luego al **optimizador de corte** con el resto del proyecto.
+
 **Patas medidas por fuera.** Todas las patas se escriben medidas por fuera, como en los planos.
 La longitud desarrollada de cada barra se calcula así: tramos rectos + patas − lo que se ahorra en el arco de cada doblez.
 El arco usa el diámetro de doblez del tipo de barra en Revit. En vigas, la figura muestra la longitud de las barras corridas y avisa si pasa de 9 m.

@@ -120,6 +120,9 @@ namespace AceroRefuerzo.Commands
                     "3. Pulse \"Colocar acero\".\n\n" +
                     "Distribución de estribos: 1@5, 10@10, R@20 (cm) se aplica desde cada extremo.\n" +
                     "Columnas: rectangulares o irregulares (L, T, cruz, circulares, poligonales).\n" +
+                    "Traslapes óptimos: en columnas de varios pisos y vigas continuas el programa ubica los traslapes " +
+                    "dentro de la zona permitida que usted elija, aprovechando las barras comerciales.\n" +
+                    "Corte de barras: patrones de corte y desperdicio por diámetro, con planilla para Excel.\n" +
                     "Losas: refuerzo de área que sigue el contorno real.\n" +
                     "Los últimos valores usados se recuerdan para la próxima vez.",
             };

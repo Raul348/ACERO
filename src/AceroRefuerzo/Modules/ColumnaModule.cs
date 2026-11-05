@@ -132,15 +132,30 @@ namespace AceroRefuerzo.Modules
             form.Choice("modoLong", "Longitud de las barras", new[]
             {
                 "Automática: del anclaje al empalme superior",
-                "Tramos que yo indico (columnas de varios pisos)"
+                "Tramos que yo indico (columnas de varios pisos)",
+                "Tramos óptimos: el programa ubica los traslapes"
             }, 0);
             form.Num("emp", "Automática: empalme superior (sobre el elemento)", 0, "cm");
             form.Txt("tramos", "Tramos: longitudes de abajo hacia arriba (m)", "9");
-            form.Num("ls", "Tramos: traslape entre tramos", 60, "cm");
-            form.Num("lcom", "Longitud comercial de la barra", 9, "m", 2, 1, 30);
-            form.Note("Con \"Tramos que yo indico\", seleccione las columnas de todos los pisos del eje: se unen y las barras se " +
-                      "colocan de abajo hacia arriba con la longitud exacta escrita (incluye la pata y el doblez del primer tramo). " +
-                      "Cada tramo empieza un traslape antes del final del anterior; el traslape queda donde usted lo decida.");
+            form.Num("ls", "Traslape entre tramos (0 = 40 diámetros)", 60, "cm", 0, 0, 500);
+            form.Txt("comerciales", "Longitudes comerciales de barra (m)", "9, 12");
+            form.Note("Con \"Tramos que yo indico\" o \"Tramos óptimos\", seleccione las columnas de todos los pisos del eje: se unen " +
+                      "y las barras se colocan de abajo hacia arriba. Con tramos indicados, la longitud escrita es la total de cada " +
+                      "tramo (incluye la pata y el doblez del primero) y el traslape queda donde usted lo decida.");
+
+            form.Section("Tramos óptimos: zona permitida para los traslapes");
+            form.Choice("zonaCol", "Zona en cada piso", new[]
+            {
+                "Tercio central de la altura",
+                "Mitad central de la altura",
+                "Personalizada: desde / hasta la base del piso",
+                "Cualquier punto"
+            }, 0);
+            form.Num("zonaIni", "Personalizada: desde (sobre la base del piso)", 50, "cm", 0, 0, 2000);
+            form.Num("zonaFin", "Personalizada: hasta (sobre la base del piso)", 200, "cm", 0, 0, 2000);
+            form.Note("El programa elige los puntos de corte dentro de la zona permitida de cada piso para que los tramos aprovechen " +
+                      "las barras comerciales (por ejemplo 4.50 + 4.50 de una de 9 m) con el menor desperdicio y el menor acero de " +
+                      "traslape. Verifique la zona con su norma (E.060, ACI 318): es un dato que usted elige.");
 
             form.Section("Estribos");
             form.Bar("barEst", "Diámetro", 9.525);
@@ -159,12 +174,15 @@ namespace AceroRefuerzo.Modules
             form.Validator = v =>
             {
                 string e = Distribution.Check(v.S("dist"));
-                if (e != null || v.I("modoLong") != 1) return e;
+                if (e != null) return e;
+                try { Corte.ParseComerciales(v.S("comerciales")); }
+                catch (FormatException ex) { return ex.Message; }
+                if (v.I("modoLong") != 1) return null;
                 try { return Empalmes.LeerTramos(v.S("tramos")) == null ? "Escriba la longitud de los tramos, por ejemplo: 9, 9, 4.5" : null; }
                 catch (FormatException ex) { return ex.Message; }
             };
             form.Figure = (g, r, v) => Figures.Columna(g, r, v, polyCm, v.I("modo") == 2 || (v.I("modo") == 0 && !s.IsRect),
-                v.I("modoLong") == 1 ? pisosCm : new List<(double, double)> { (0, hCm) });
+                v.I("modoLong") != 0 ? pisosCm : new List<(double, double)> { (0, hCm) });
             return form;
         }
 
@@ -179,7 +197,7 @@ namespace AceroRefuerzo.Modules
         /// Cada grupo va ordenado de abajo hacia arriba. En modo automático cada columna va sola.
         /// </summary>
         public List<List<Element>> Agrupar(IList<Element> hosts, FormValues v) =>
-            v != null && v.I("modoLong") == 1 ? Pilas(hosts) : hosts.Select(h => new List<Element> { h }).ToList();
+            v != null && v.I("modoLong") != 0 ? Pilas(hosts) : hosts.Select(h => new List<Element> { h }).ToList();
 
         private static List<List<Element>> Pilas(IList<Element> hosts)
         {
@@ -252,21 +270,39 @@ namespace AceroRefuerzo.Modules
             double zIni = anc > 0 ? pisos[0].zb - anc : pisos[0].zb + c;
             double zFin = emp > 0 ? pisos[pisos.Count - 1].zt + emp : pisos[pisos.Count - 1].zt - c;
 
-            // Tramos: automático (una barra de punta a punta) o las longitudes que indique el usuario.
+            // Tramos: automático (una barra de punta a punta), las longitudes que indique el usuario,
+            // o los tramos óptimos con los traslapes dentro de la zona permitida de cada piso.
             double pataEje = Empalmes.PataEje(v.Cm("pata"), db);
             double extra = pataEje > 0 ? pataEje - Empalmes.Ahorro90(db, tL.StandardBendDiameter) : 0;
+            double ls = Traslapes.Ls(v, "ls", db, Un.Cm);
             List<double> largos = v.I("modoLong") == 1 ? Empalmes.LeerTramos(v.S("tramos")) : null;
-            List<(double Ini, double Fin)> tramos = largos != null
-                ? Empalmes.UbicarTramos(zIni, largos.Select(m => Un.Cm(m * 100)).ToList(), extra, v.Cm("ls"))
-                : new List<(double, double)> { (zIni, zFin) };
+            List<(double Ini, double Fin)> tramos;
+            if (v.I("modoLong") == 2)
+            {
+                Traslapes.Resultado opt = Traslapes.Columna(v, pisos, zIni, zFin, extra, db, Un.Cm);
+                if (opt == null)
+                    throw new InvalidOperationException("No hay forma de ubicar los traslapes dentro de la zona permitida con las barras comerciales indicadas. " +
+                                                        "Amplíe la zona, agregue una longitud comercial mayor o use \"Tramos que yo indico\".");
+                tramos = opt.Tramos;
+            }
+            else
+            {
+                tramos = largos != null
+                    ? Empalmes.UbicarTramos(zIni, largos.Select(m => Un.Cm(m * 100)).ToList(), extra, ls)
+                    : new List<(double, double)> { (zIni, zFin) };
+            }
 
-            double lcom = Un.Cm(v.D("lcom") * 100);
+            double lcom = Traslapes.Comerciales(v, Un.Cm).Max();
             for (int k = 0; k < tramos.Count; k++)
             {
                 double desarrollo = tramos[k].Fin - tramos[k].Ini + (k == 0 ? extra : 0);
                 if (desarrollo > lcom + Un.Mm(5))
-                    report.Warnings.Add($"{grupo[0].Name} [Id {grupo[0].Id}]: el tramo {k + 1} mide {Un.ToCm(desarrollo) / 100:0.00} m y supera la barra comercial de {v.D("lcom"):0.00} m.");
+                    report.Warnings.Add($"{grupo[0].Name} [Id {grupo[0].Id}]: el tramo {k + 1} mide {Un.ToCm(desarrollo) / 100:0.00} m y supera la barra comercial de {Un.ToCm(lcom) / 100:0.00} m.");
             }
+            if (tramos.Count > 1)
+                report.Warnings.Add($"{grupo[0].Name} [Id {grupo[0].Id}]: barras longitudinales en {tramos.Count} tramos de " +
+                                    string.Join(" + ", tramos.Select((t, k) => $"{Un.ToCm(t.Fin - t.Ini + (k == 0 ? extra : 0)) / 100:0.00}")) +
+                                    $" m; traslapes en " + string.Join(", ", tramos.Skip(1).Select(t => $"{Un.ToCm(t.Ini - pisos[0].zb) / 100:0.00}–{Un.ToCm(t.Ini + ls - pisos[0].zb) / 100:0.00} m")) + " sobre la base.");
             if (largos != null && tramos[tramos.Count - 1].Fin < zFin - Un.Mm(5))
                 report.Warnings.Add($"{grupo[0].Name} [Id {grupo[0].Id}]: los tramos indicados no llegan al tope; faltan {Un.ToCm(zFin - tramos[tramos.Count - 1].Fin) / 100:0.00} m.");
 
