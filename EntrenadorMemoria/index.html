@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Entrenador de Memoria</title>
-  <meta name="description" content="Ejercicios interactivos para entrenar y mejorar la memoria.">
+  <meta name="description" content="Entrenamiento de memoria basado en métodos con evidencia científica y evaluación objetiva del progreso.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
   <link rel="stylesheet" href="estilos.css">
 </head>
@@ -13,8 +13,9 @@
     <button class="logo" data-ir="inicio" aria-label="Ir al inicio">🧠 <span>Entrenador de Memoria</span></button>
     <nav>
       <button data-ir="inicio">Inicio</button>
+      <button data-ir="evaluacion">Evaluación</button>
       <button data-ir="progreso">Progreso</button>
-      <button data-ir="tecnicas">Técnicas</button>
+      <button data-ir="evidencia">Evidencia</button>
       <button id="btnSonido" class="icono" title="Activar/desactivar sonido" aria-label="Sonido">🔊</button>
       <button id="btnTema" class="icono" title="Cambiar tema claro/oscuro" aria-label="Tema">🌓</button>
     </nav>
@@ -25,5 +26,7 @@
   <div id="confeti" aria-hidden="true"></div>
 
   <script src="app.js"></script>
+  <script src="evaluacion.js"></script>
+  <script src="metodos.js"></script>
 </body>
 </html>

@@ -67,7 +67,10 @@ const Datos = {
   clave: 'entrenadorMemoria.v1',
   d: null,
   base() {
-    return { historial: [], mejores: {}, niveles: {}, racha: { ultimo: null, dias: 0, maxima: 0 }, sonido: true, tema: null };
+    return {
+      historial: [], mejores: {}, niveles: {}, racha: { ultimo: null, dias: 0, maxima: 0 },
+      evaluaciones: [], tarjetas: [], loci: null, sonido: true, tema: null,
+    };
   },
   cargar() {
     try { this.d = JSON.parse(localStorage.getItem(this.clave)); } catch (e) { this.d = null; }
@@ -89,17 +92,20 @@ const Datos = {
     const record = puntos > anterior;
     if (record) this.d.mejores[juego] = puntos;
     this.d.niveles[juego] = nivelSig;
-
-    const r = this.d.racha;
-    if (r.ultimo !== dia) {
-      const ayer = new Date(ahora);
-      ayer.setDate(ayer.getDate() - 1);
-      r.dias = r.ultimo === fechaISO(ayer) ? r.dias + 1 : 1;
-      r.ultimo = dia;
-      r.maxima = Math.max(r.maxima || 0, r.dias);
-    }
+    this.marcarDia();
     this.guardar();
     return { record: record && anterior > 0, primero: anterior === 0 };
+  },
+  /** Actualiza la racha de días consecutivos de entrenamiento. */
+  marcarDia() {
+    const dia = fechaISO();
+    const r = this.d.racha;
+    if (r.ultimo === dia) return;
+    const ayer = new Date();
+    ayer.setDate(ayer.getDate() - 1);
+    r.dias = r.ultimo === fechaISO(ayer) ? r.dias + 1 : 1;
+    r.ultimo = dia;
+    r.maxima = Math.max(r.maxima || 0, r.dias);
   },
   rachaActual() {
     const r = this.d.racha;
@@ -177,16 +183,66 @@ const PALABRAS = [
   'hoja', 'tiburón', 'lámpara', 'molino', 'pingüino', 'robot', 'semáforo', 'tenedor', 'puerta', 'almohada', 'búho', 'carta',
 ];
 
-const TECNICAS = [
-  { icono: '🏛️', titulo: 'Palacio de la memoria', texto: 'Imagina un lugar que conoces muy bien (tu casa) y coloca cada elemento que quieres recordar en un punto concreto del recorrido. Para recordar, vuelve a recorrerlo mentalmente.', ejemplo: 'Lista: pan, llaves, reloj → el pan está en la puerta, las llaves cuelgan del sofá, el reloj suena dentro de la nevera.' },
-  { icono: '🧩', titulo: 'Agrupación (chunking)', texto: 'La memoria de trabajo retiene unos 4–7 elementos. Agrupa los datos en bloques con sentido para recordar mucho más.', ejemplo: '6 1 8 2 4 7 9 3 → 618 · 247 · 93' },
-  { icono: '🎬', titulo: 'Historias absurdas', texto: 'Une los elementos en una historia exagerada, divertida y con movimiento. Lo raro y emocional se recuerda mejor.', ejemplo: 'Un tigre con sombrero toca el piano encima de un barco.' },
-  { icono: '🔁', titulo: 'Repetición espaciada', texto: 'Repasa justo antes de olvidar: hoy, mañana, en 3 días, en una semana… Cada repaso alarga la duración del recuerdo.', ejemplo: 'Entrena aquí unos minutos cada día en lugar de una hora un solo día.' },
-  { icono: '🗣️', titulo: 'Recuerdo activo', texto: 'Intentar recordar sin mirar es mucho más eficaz que releer. Ponte a prueba constantemente.', ejemplo: 'Cierra el libro y explica en voz alta lo que acabas de leer.' },
-  { icono: '🔤', titulo: 'Acrónimos y rimas', texto: 'Usa la primera letra de cada palabra o crea una rima o canción para listas ordenadas.', ejemplo: 'Colores del arcoíris: «RNAVAAV» (rojo, naranja, amarillo, verde, azul, añil, violeta).' },
-  { icono: '😴', titulo: 'Sueño y ejercicio', texto: 'El cerebro consolida los recuerdos mientras duermes. El ejercicio aeróbico y una buena hidratación mejoran la memoria.', ejemplo: 'Duerme 7–9 horas y camina 30 minutos al día.' },
-  { icono: '🎯', titulo: 'Atención plena', texto: 'No se puede recordar lo que no se ha atendido. Elimina distracciones y concéntrate en una sola cosa.', ejemplo: 'Al conocer a alguien, repite su nombre en voz alta: «Encantado, Laura».' },
-];
+/* Evidencia científica. Cada entrada indica qué dice la investigación y dónde se aplica en el programa. */
+const EVIDENCIA = {
+  solida: [
+    {
+      icono: '🗣️', titulo: 'Recuerdo activo (efecto test)',
+      texto: 'Intentar recordar sin mirar fortalece la memoria mucho más que releer. En el estudio clásico, una semana después quienes se habían puesto a prueba recordaban un 61% del texto frente a un 40% de quienes solo lo releyeron.',
+      aplicacion: 'Repaso espaciado: primero intentas recordar y después ves la respuesta.',
+      refs: [
+        'Roediger, H. L. y Karpicke, J. D. (2006). Test-enhanced learning. Psychological Science, 17(3), 249–255.',
+        'Karpicke, J. D. y Roediger, H. L. (2008). The critical importance of retrieval for learning. Science, 319(5865), 966–968.',
+      ],
+    },
+    {
+      icono: '🔁', titulo: 'Repetición espaciada',
+      texto: 'Repartir los repasos en el tiempo produce recuerdos mucho más duraderos que estudiarlo todo de una vez. Es uno de los efectos más replicados de la psicología.',
+      aplicacion: 'Repaso espaciado: el programa calcula cuándo repasar cada tarjeta (algoritmo SM-2).',
+      refs: [
+        'Cepeda, N. J., Pashler, H., Vul, E., Wixted, J. T. y Rohrer, D. (2006). Distributed practice in verbal recall tasks: A review and quantitative synthesis. Psychological Bulletin, 132(3), 354–380.',
+        'Dunlosky, J. et al. (2013). Improving students’ learning with effective learning techniques. Psychological Science in the Public Interest, 14(1), 4–58. (Calificó el recuerdo activo y la práctica espaciada como las técnicas de «alta utilidad».)',
+      ],
+    },
+    {
+      icono: '🏛️', titulo: 'Método de loci (palacio de la memoria)',
+      texto: 'Personas sin experiencia que entrenaron este método unos 30 minutos al día durante 6 semanas pasaron de recordar unas 26 a unas 62 palabras de una lista de 72, y conservaban buena parte de la mejora 4 meses después.',
+      aplicacion: 'Ejercicio «Palacio de la memoria» con tu propio recorrido.',
+      refs: [
+        'Dresler, M. et al. (2017). Mnemonic training reshapes brain networks to support superior memory. Neuron, 93(5), 1227–1235.',
+      ],
+    },
+    {
+      icono: '😴', titulo: 'Dormir bien',
+      texto: 'Durante el sueño el cerebro consolida lo aprendido. Dormir poco perjudica tanto el aprendizaje como el recuerdo.',
+      aplicacion: 'Hábito: 7–9 horas. Repasar antes de dormir es una buena estrategia.',
+      refs: ['Rasch, B. y Born, J. (2013). About sleep’s role in memory. Physiological Reviews, 93(2), 681–766.'],
+    },
+    {
+      icono: '🚶', titulo: 'Ejercicio aeróbico',
+      texto: 'En adultos mayores, caminar a paso ligero 3 veces por semana durante un año aumentó un 2% el volumen del hipocampo (región clave de la memoria) y mejoró la memoria espacial.',
+      aplicacion: 'Hábito: unos 40 minutos de caminata, 3 veces por semana.',
+      refs: ['Erickson, K. I. et al. (2011). Exercise training increases size of hippocampus and improves memory. PNAS, 108(7), 3017–3022.'],
+    },
+  ],
+  limitada: [
+    {
+      icono: '🎮', titulo: 'Juegos de «entrenamiento cerebral»',
+      texto: 'Los ejercicios de memoria de trabajo (N-back, secuencias, parejas…) mejoran claramente la tarea que se practica y otras muy parecidas, pero los metaanálisis encuentran poca o ninguna mejora en la memoria cotidiana o la inteligencia. En 2016 la FTC de EE. UU. sancionó a Lumosity por anunciar beneficios cognitivos no demostrados.',
+      aplicacion: 'Por eso aquí son «ejercicios complementarios»: sirven de calentamiento y para la concentración, no como el núcleo del entrenamiento.',
+      refs: [
+        'Melby-Lervåg, M. y Hulme, C. (2013). Is working memory training effective? A meta-analytic review. Developmental Psychology, 49(2), 270–291.',
+        'Simons, D. J. et al. (2016). Do “brain-training” programs work? Psychological Science in the Public Interest, 17(3), 103–186.',
+        'Soveri, A. et al. (2017). Working memory training revisited: A multi-level meta-analysis of n-back training studies. Psychonomic Bulletin & Review, 24(4), 1077–1096.',
+      ],
+    },
+  ],
+  utiles: [
+    { icono: '🧩', titulo: 'Agrupación (chunking)', texto: 'La memoria inmediata retiene unos 4 bloques de información. Agrupar los datos en bloques con sentido permite recordar más.', ejemplo: '6 1 8 2 4 7 9 3 → 618 · 247 · 93', ref: 'Cowan, N. (2001). The magical number 4 in short-term memory. Behavioral and Brain Sciences, 24(1), 87–114.' },
+    { icono: '🎬', titulo: 'Imágenes vívidas e historias', texto: 'Convertir palabras en imágenes exageradas y unirlas en una historia es la base del palacio de la memoria.', ejemplo: 'Un tigre con sombrero toca el piano encima de un barco.' },
+    { icono: '🎯', titulo: 'Atención', texto: 'No se puede recordar lo que no se ha atendido. Muchos «olvidos» son en realidad fallos de atención al codificar.', ejemplo: 'Al conocer a alguien, repite su nombre en voz alta: «Encantado, Laura».' },
+  ],
+};
 
 /* ---------- Ejercicios ---------- */
 const JUEGOS = {
@@ -195,6 +251,8 @@ const JUEGOS = {
     nombre: 'Parejas',
     icono: '🃏',
     habilidad: 'Memoria visual-espacial',
+    categoria: 'complementario',
+    evidencia: 'Limitada: mejora la tarea practicada',
     descripcion: 'Da la vuelta a las cartas y encuentra todas las parejas con el menor número de movimientos.',
     instrucciones: [
       'Toca una carta para darle la vuelta; después toca otra.',
@@ -287,6 +345,8 @@ const JUEGOS = {
     nombre: 'Secuencia',
     icono: '🎵',
     habilidad: 'Memoria secuencial y auditiva',
+    categoria: 'complementario',
+    evidencia: 'Limitada: mejora la tarea practicada',
     descripcion: 'Observa y escucha la secuencia de luces y repítela. Cada ronda añade un paso más.',
     instrucciones: [
       'Los botones se iluminan y suenan en un orden.',
@@ -388,6 +448,8 @@ const JUEGOS = {
     nombre: 'Dígitos',
     icono: '🔢',
     habilidad: 'Memoria de trabajo verbal',
+    categoria: 'complementario',
+    evidencia: 'Limitada: mejora la tarea practicada',
     descripcion: 'Memoriza números cada vez más largos y escríbelos. Incluye modo inverso y lectura en voz alta.',
     instrucciones: [
       'Aparecerán dígitos de uno en uno.',
@@ -509,6 +571,8 @@ const JUEGOS = {
     nombre: 'Cuadrícula',
     icono: '🟪',
     habilidad: 'Memoria espacial',
+    categoria: 'complementario',
+    evidencia: 'Limitada: mejora la tarea practicada',
     descripcion: 'Unas casillas se iluminan un instante. Recuerda cuáles eran y tócalas. La cuadrícula crece.',
     instrucciones: [
       'Observa qué casillas se iluminan.',
@@ -607,6 +671,8 @@ const JUEGOS = {
     nombre: 'Lista de palabras',
     icono: '📝',
     habilidad: 'Memoria verbal a corto plazo',
+    categoria: 'complementario',
+    evidencia: 'Moderada: practica el recuerdo libre',
     descripcion: 'Estudia una lista de palabras durante un tiempo limitado y luego escribe todas las que recuerdes.',
     instrucciones: [
       'Tendrás unos segundos para memorizar una lista de palabras.',
@@ -719,6 +785,8 @@ const JUEGOS = {
     nombre: 'N-Back',
     icono: '🎯',
     habilidad: 'Memoria de trabajo y concentración',
+    categoria: 'complementario',
+    evidencia: 'Limitada: poca transferencia (Soveri et al., 2017)',
     descripcion: 'Un cuadro se ilumina en distintas posiciones. Pulsa cuando la posición coincida con la de N pasos atrás.',
     instrucciones: [
       'En cada paso se ilumina una casilla de la cuadrícula 3×3.',
@@ -825,12 +893,14 @@ const JUEGOS = {
 
 /* ---------- Navegación y vistas ---------- */
 const app = $('#app');
-let diario = null; // { cola: [ids], idx, total }
+
+/** Pestaña de la barra superior que se marca para cada vista. */
+const PESTANA = { evaluacion: 'evaluacion', evalPrueba: 'evaluacion', evalResultado: 'evaluacion', progreso: 'progreso', evidencia: 'evidencia' };
 
 function ir(vista, ...args) {
   Sesion.limpiar();
-  if (vista !== 'jugar' && vista !== 'resultado' && vista !== 'intro') diario = null;
-  $$('.barra nav [data-ir]').forEach((b) => b.classList.toggle('activo', b.dataset.ir === vista));
+  const pestana = PESTANA[vista] || 'inicio';
+  $$('.barra nav [data-ir]').forEach((b) => b.classList.toggle('activo', b.dataset.ir === pestana));
   window.scrollTo(0, 0);
   Vistas[vista](...args);
   app.focus({ preventScroll: true });
@@ -842,61 +912,120 @@ function pintarHud(contenedor) {
   };
 }
 
+const diasEntre = (isoA, isoB) => Math.round((new Date(isoB) - new Date(isoA)) / 86400000);
+
+function tarjetaJuego(id, j) {
+  return `
+    <button class="juego-card" data-juego="${id}">
+      <span class="icono-juego">${j.icono}</span>
+      <h3>${j.nombre}</h3>
+      <p>${j.descripcion}</p>
+      <div class="etiquetas">
+        <span class="etiqueta ${j.categoria === 'evidencia' ? 'alta' : ''}">${j.categoria === 'evidencia' ? '✔ ' : ''}${j.evidencia}</span>
+        <span class="etiqueta">Nivel ${Datos.nivel(id)}</span>
+        ${Datos.d.mejores[id] ? `<span class="etiqueta">🏆 ${Datos.d.mejores[id]}</span>` : ''}
+      </div>
+    </button>`;
+}
+
 const Vistas = {
   inicio() {
     const racha = Datos.rachaActual();
-    const hoyN = Datos.d.historial.filter((h) => h.dia === fechaISO()).length;
+    const hoy = fechaISO();
+    const hechosHoy = new Set(Datos.d.historial.filter((h) => h.dia === hoy).map((h) => h.juego));
+    const pendientes = tarjetasPendientes().length;
+    const evals = Datos.d.evaluaciones;
+    const ultimaEval = evals[evals.length - 1];
     const saludo = (() => {
       const h = new Date().getHours();
       return h < 12 ? 'Buenos días' : h < 20 ? 'Buenas tardes' : 'Buenas noches';
     })();
+
+    let avisoEval;
+    if (!ultimaEval) {
+      avisoEval = `<div class="aviso-eval"><div><b>📋 Empieza por la evaluación inicial (≈ 12 min)</b><p>Mide tu memoria antes de entrenar para poder comprobar después, con datos, si mejoras.</p></div><button class="btn primario" data-ir2="evaluacion">Hacer evaluación</button></div>`;
+    } else {
+      const dias = diasEntre(ultimaEval.fecha.slice(0, 10), hoy);
+      const faltan = 14 - dias;
+      avisoEval = `<div class="aviso-eval ${faltan <= 0 ? '' : 'tranquilo'}"><div><b>📋 Última evaluación: hace ${dias} ${dias === 1 ? 'día' : 'días'}</b><p>${faltan <= 0 ? 'Ya toca repetirla para medir tu progreso.' : `Próxima evaluación recomendada en ${faltan} ${faltan === 1 ? 'día' : 'días'} (cada 2 semanas).`}</p></div><button class="btn ${faltan <= 0 ? 'primario' : ''}" data-ir2="evaluacion">${faltan <= 0 ? 'Repetir evaluación' : 'Ver resultados'}</button></div>`;
+    }
+
+    const complementarioHecho = Object.keys(JUEGOS).some((id) => JUEGOS[id].categoria === 'complementario' && hechosHoy.has(id));
+    const plan = [
+      { hecho: Datos.d.tarjetas.length > 0 && pendientes === 0, texto: pendientes ? `Repaso espaciado: ${pendientes} ${pendientes === 1 ? 'tarjeta pendiente' : 'tarjetas pendientes'}` : Datos.d.tarjetas.length ? 'Repaso espaciado: al día' : 'Repaso espaciado: crea tus primeras tarjetas', accion: 'repaso' },
+      { hecho: hechosHoy.has('loci'), texto: 'Una sesión de Palacio de la memoria (≈ 10 min)', accion: 'loci' },
+      { hecho: complementarioHecho, texto: 'Opcional: un ejercicio complementario', accion: 'complementario' },
+    ];
+
     app.innerHTML = `
       <section class="bienvenida">
         <div>
           <h1>${saludo} 👋</h1>
-          <p>Unos minutos al día de entrenamiento constante marcan la diferencia.</p>
+          <p>Entrenamiento basado en métodos con eficacia demostrada, y medición objetiva de tu progreso.</p>
           <div class="racha">
             <div>🔥 Racha: ${racha} ${racha === 1 ? 'día' : 'días'}</div>
-            <div>✅ Hoy: ${hoyN} ${hoyN === 1 ? 'ejercicio' : 'ejercicios'}</div>
-            <div>🏆 Total: ${Datos.d.historial.length}</div>
+            <div>✅ Hoy: ${Datos.d.historial.filter((h) => h.dia === hoy).length}</div>
+            <div>📋 Evaluaciones: ${evals.length}</div>
           </div>
         </div>
-        <button class="btn grande" id="btnDiario">▶ Entrenamiento diario</button>
       </section>
-      <h2>Ejercicios</h2>
-      <p class="suave">Elige un ejercicio. El nivel se ajusta automáticamente a tu rendimiento.</p>
+
+      ${avisoEval}
+
+      <section class="tarjeta seccion">
+        <h2>Plan de hoy</h2>
+        <ul class="plan">
+          ${plan.map((p) => `<li class="${p.hecho ? 'hecho' : ''}"><button data-plan="${p.accion}"><span class="check">${p.hecho ? '✔' : ''}</span>${p.texto}</button></li>`).join('')}
+        </ul>
+      </section>
+
+      <h2>Métodos con evidencia sólida</h2>
+      <p class="suave">El núcleo del entrenamiento. <a href="#" data-ir2="evidencia">Ver los estudios →</a></p>
+      <div class="rejilla-juegos seccion">
+        <button class="juego-card" id="cardRepaso">
+          <span class="icono-juego">🔁</span>
+          <h3>Repaso espaciado</h3>
+          <p>Memoriza lo que tú necesites (nombres, vocabulario, datos…). El programa te pregunta justo antes de que lo olvides.</p>
+          <div class="etiquetas">
+            <span class="etiqueta alta">✔ Alta: Cepeda et al. (2006), Karpicke y Roediger (2008)</span>
+            <span class="etiqueta">${Datos.d.tarjetas.length} tarjetas</span>
+            ${pendientes ? `<span class="etiqueta destacada">${pendientes} pendientes</span>` : ''}
+          </div>
+        </button>
+        ${Object.entries(JUEGOS).filter(([, j]) => j.categoria === 'evidencia').map(([id, j]) => tarjetaJuego(id, j)).join('')}
+      </div>
+
+      <h2>Ejercicios complementarios</h2>
+      <p class="suave">Entrenan la memoria de trabajo y la concentración. Mejorarás en ellos, pero la investigación muestra que esa mejora se transfiere poco a la vida diaria.</p>
       <div class="rejilla-juegos">
-        ${Object.entries(JUEGOS).map(([id, j]) => `
-          <button class="juego-card" data-juego="${id}">
-            <span class="icono-juego">${j.icono}</span>
-            <h3>${j.nombre}</h3>
-            <p>${j.descripcion}</p>
-            <div class="etiquetas">
-              <span class="etiqueta destacada">${j.habilidad}</span>
-              <span class="etiqueta">Nivel ${Datos.nivel(id)}</span>
-              ${Datos.d.mejores[id] ? `<span class="etiqueta">🏆 ${Datos.d.mejores[id]}</span>` : ''}
-            </div>
-          </button>`).join('')}
+        ${Object.entries(JUEGOS).filter(([, j]) => j.categoria === 'complementario').map(([id, j]) => tarjetaJuego(id, j)).join('')}
       </div>`;
+
     $$('[data-juego]', app).forEach((b) => b.addEventListener('click', () => ir('intro', b.dataset.juego)));
-    $('#btnDiario').addEventListener('click', () => {
-      const cola = barajar(Object.keys(JUEGOS)).slice(0, 3);
-      diario = { cola, idx: 0, puntos: 0 };
-      ir('intro', cola[0]);
-    });
+    $$('[data-ir2]', app).forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); ir(b.dataset.ir2); }));
+    $('#cardRepaso').addEventListener('click', () => ir('repaso'));
+    $$('[data-plan]', app).forEach((b) => b.addEventListener('click', () => {
+      const a = b.dataset.plan;
+      if (a === 'repaso') ir(pendientes ? 'repasoSesion' : 'repaso');
+      else if (a === 'loci') ir('intro', 'loci');
+      else {
+        const ids = Object.keys(JUEGOS).filter((id) => JUEGOS[id].categoria === 'complementario');
+        ir('intro', ids[azar(ids.length)]);
+      }
+    }));
   },
 
   intro(id) {
     const j = JUEGOS[id];
-    let nivel = limitar(Datos.nivel(id), 1, j.maxNivel);
-    const etiquetaDiario = diario ? `<p class="etiqueta destacada" style="display:inline-block">Entrenamiento diario · ejercicio ${diario.idx + 1} de ${diario.cola.length}</p>` : '';
+    const maxNivel = j.maxNivelActual ? j.maxNivelActual() : j.maxNivel;
+    let nivel = limitar(Datos.nivel(id), 1, maxNivel);
     app.innerHTML = `
       <section class="intro tarjeta">
-        ${etiquetaDiario}
         <div class="icono-juego">${j.icono}</div>
         <h1>${j.nombre}</h1>
-        <p class="suave">${j.habilidad}</p>
+        <p class="suave">${j.habilidad} · <span class="etiqueta ${j.categoria === 'evidencia' ? 'alta' : ''}">Evidencia: ${j.evidencia}</span></p>
         <ul>${j.instrucciones.map((t) => `<li>${t}</li>`).join('')}</ul>
+        <div id="introExtra"></div>
         <div>
           <p class="suave" style="margin:0">Nivel</p>
           <div class="selector-nivel">
@@ -904,26 +1033,29 @@ const Vistas = {
             <span class="valor" id="valorNivel">${nivel}</span>
             <button class="btn" id="mas" aria-label="Subir nivel">+</button>
           </div>
+          <p class="suave" id="detalleNivel" style="margin:-.5rem 0 1rem"></p>
         </div>
         ${j.opciones ? `<div class="opciones">${j.opciones.map((o) => `<label><input type="checkbox" data-op="${o.id}"> ${o.texto}</label>`).join('')}</div>` : ''}
         <div class="fila centro">
           <button class="btn" id="volver">← Volver</button>
           <button class="btn primario grande" id="empezar">Comenzar</button>
         </div>
-        <p class="suave" style="font-size:.85rem;margin-top:1rem">Pulsa Enter para empezar</p>
       </section>`;
-    const pintar = () => { $('#valorNivel').textContent = nivel; };
+    const pintar = () => {
+      $('#valorNivel').textContent = nivel;
+      $('#detalleNivel').textContent = j.etiquetaNivel ? j.etiquetaNivel(nivel) : '';
+    };
+    pintar();
+    if (j.introExtra) j.introExtra($('#introExtra'), () => { nivel = Math.min(nivel, j.maxNivelActual()); pintar(); });
     $('#menos').addEventListener('click', () => { nivel = Math.max(1, nivel - 1); pintar(); });
-    $('#mas').addEventListener('click', () => { nivel = Math.min(j.maxNivel, nivel + 1); pintar(); });
+    $('#mas').addEventListener('click', () => { nivel = Math.min(j.maxNivelActual ? j.maxNivelActual() : j.maxNivel, nivel + 1); pintar(); });
     $('#volver').addEventListener('click', () => ir('inicio'));
-    const empezar = () => {
+    $('#empezar').addEventListener('click', () => {
       const opc = {};
       $$('[data-op]', app).forEach((c) => { opc[c.dataset.op] = c.checked; });
       ir('jugar', id, nivel, opc);
-    };
-    $('#empezar').addEventListener('click', empezar);
+    });
     $('#empezar').focus();
-    Sesion.tecla = (e) => { if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') empezar(); };
   },
 
   jugar(id, nivel, opc) {
@@ -943,7 +1075,8 @@ const Vistas = {
       nivel,
       opc: opc || {},
       fin: (res) => {
-        const nivelSig = limitar(res.nivelSig, 1, j.maxNivel);
+        const max = j.maxNivelActual ? j.maxNivelActual() : j.maxNivel;
+        const nivelSig = limitar(res.nivelSig, 1, max);
         const seg = Math.round((Date.now() - inicio) / 1000);
         const r = Datos.registrar(id, res.puntos, nivel, nivelSig, seg);
         ir('resultado', id, { ...res, nivel, nivelSig, ...r });
@@ -953,24 +1086,10 @@ const Vistas = {
 
   resultado(id, res) {
     const j = JUEGOS[id];
-    let cambio = '';
+    let cambio;
     if (res.nivelSig > res.nivel) cambio = `⬆️ ¡Subes al nivel ${res.nivelSig}!`;
     else if (res.nivelSig < res.nivel) cambio = `Próxima partida: nivel ${res.nivelSig}, para consolidar.`;
     else cambio = `Sigues en el nivel ${res.nivelSig}.`;
-
-    let botones;
-    if (diario) {
-      diario.puntos += res.puntos;
-      diario.idx++;
-      botones = diario.idx < diario.cola.length
-        ? `<button class="btn primario grande" id="siguiente">Siguiente ejercicio →</button>`
-        : `<button class="btn primario grande" id="menu">Terminar entrenamiento</button>`;
-    } else {
-      botones = `<button class="btn" id="menu">Menú</button><button class="btn primario grande" id="repetir">↻ Jugar otra vez</button>`;
-    }
-    const finDiario = diario && diario.idx >= diario.cola.length
-      ? `<div class="tarjeta" style="margin:1rem 0"><h3>🎉 ¡Entrenamiento diario completado!</h3><p class="suave" style="margin:0">Puntos totales de hoy: <b>${diario.puntos}</b></p></div>`
-      : '';
 
     app.innerHTML = `
       <section class="resultado tarjeta">
@@ -983,23 +1102,25 @@ const Vistas = {
         <div class="detalles">${res.detalle.map(([k, v]) => `<div><small>${escapar(k)}</small><b>${escapar(v)}</b></div>`).join('')}</div>
         ${res.extra ? `<div class="extra">${res.extra}</div>` : ''}
         <p>${cambio}</p>
-        ${finDiario}
-        <div class="fila centro">${botones}</div>
+        <div class="fila centro">
+          <button class="btn" id="menu">Menú</button>
+          <button class="btn primario grande" id="repetir">↻ Otra vez</button>
+        </div>
       </section>`;
 
-    if (res.record || finDiario) { confeti(); Sonido.fanfarria(); }
-    const repetir = $('#repetir');
-    const siguiente = $('#siguiente');
-    if (repetir) { repetir.addEventListener('click', () => ir('intro', id)); repetir.focus(); }
-    if (siguiente) { siguiente.addEventListener('click', () => ir('intro', diario.cola[diario.idx])); siguiente.focus(); }
-    $('#menu')?.addEventListener('click', () => ir('inicio'));
+    if (res.record) { confeti(); Sonido.fanfarria(); }
+    $('#repetir').addEventListener('click', () => ir('intro', id));
+    $('#repetir').focus();
+    $('#menu').addEventListener('click', () => ir('inicio'));
   },
 
   progreso(juegoSel) {
     const h = Datos.d.historial;
     const minutos = Math.round(h.reduce((s, x) => s + (x.segundos || 0), 0) / 60);
     const ids = Object.keys(JUEGOS);
-    juegoSel = juegoSel || (h.length ? h[h.length - 1].juego : ids[0]);
+    const ultimoJuego = [...h].reverse().find((x) => JUEGOS[x.juego]);
+    juegoSel = juegoSel || (ultimoJuego ? ultimoJuego.juego : ids[0]);
+    const rep = estadisticasRepaso();
 
     app.innerHTML = `
       <h1>Tu progreso</h1>
@@ -1011,12 +1132,29 @@ const Vistas = {
       </div>
 
       <section class="tarjeta seccion">
+        <h3>📋 ¿Está funcionando?</h3>
+        <p class="suave">La forma objetiva de comprobarlo es comparar tus evaluaciones a lo largo de las semanas. Las puntuaciones de los ejercicios solo muestran cuánto mejoras en cada ejercicio.</p>
+        <button class="btn primario" data-ir2="evaluacion">Ver evaluaciones (${Datos.d.evaluaciones.length})</button>
+      </section>
+
+      <section class="tarjeta seccion">
+        <h3>🔁 Repaso espaciado</h3>
+        <div class="detalles">
+          <div><small>Tarjetas</small><b>${Datos.d.tarjetas.length}</b></div>
+          <div><small>Repasos totales</small><b>${rep.repasos}</b></div>
+          <div><small>Retención</small><b>${rep.retencion}</b></div>
+          <div><small>Tarjetas dominadas (≥ 21 días)</small><b>${rep.dominadas}</b></div>
+        </div>
+        <p class="suave" style="margin:0">Retención = porcentaje de veces que recordaste la respuesta al repasar. Un valor estable alrededor del 80–90% indica que el espaciado está bien ajustado.</p>
+      </section>
+
+      <section class="tarjeta seccion">
         <h3>Actividad de los últimos 14 días</h3>
         <div id="actividad"></div>
       </section>
 
       <section class="tarjeta seccion">
-        <h3>Evolución de puntuación</h3>
+        <h3>Evolución por ejercicio</h3>
         <div class="selector-juego">${ids.map((id) => `<button class="btn ${id === juegoSel ? 'activo' : ''}" data-sel="${id}">${JUEGOS[id].icono} ${JUEGOS[id].nombre}</button>`).join('')}</div>
         <div id="evolucion"></div>
       </section>
@@ -1038,14 +1176,16 @@ const Vistas = {
 
       <div class="fila">
         <button class="btn" id="exportar">⬇ Exportar datos</button>
-        <button class="btn" id="borrar">🗑 Borrar progreso</button>
+        <button class="btn" id="borrar">🗑 Borrar todo</button>
       </div>`;
 
     $('#actividad').innerHTML = graficoActividad(h);
-    $('#evolucion').innerHTML = graficoEvolucion(h.filter((x) => x.juego === juegoSel).slice(-25));
+    const partidas = h.filter((x) => x.juego === juegoSel).slice(-25);
+    $('#evolucion').innerHTML = graficoLinea(partidas.map((p) => ({ v: p.puntos, fecha: p.fecha, info: `${p.puntos} pts · nivel ${p.nivel}` })));
     $$('[data-sel]', app).forEach((b) => b.addEventListener('click', () => Vistas.progreso(b.dataset.sel)));
+    $$('[data-ir2]', app).forEach((b) => b.addEventListener('click', () => ir(b.dataset.ir2)));
     $('#borrar').addEventListener('click', () => {
-      if (confirm('¿Seguro que quieres borrar todo tu progreso? No se puede deshacer.')) {
+      if (confirm('¿Seguro que quieres borrar todo tu progreso, evaluaciones y tarjetas? No se puede deshacer.')) {
         const { sonido, tema } = Datos.d;
         Datos.d = Object.assign(Datos.base(), { sonido, tema });
         Datos.guardar();
@@ -1062,18 +1202,45 @@ const Vistas = {
     });
   },
 
-  tecnicas() {
+  evidencia() {
+    const refs = (lista) => `<details class="refs"><summary>Estudios</summary><ul>${lista.map((r) => `<li>${escapar(r)}</li>`).join('')}</ul></details>`;
+    const bloque = (e, clase) => `
+      <article class="tarjeta ${clase}">
+        <h3><span>${e.icono}</span>${e.titulo}</h3>
+        <p>${e.texto}</p>
+        <div class="ejemplo">👉 ${e.aplicacion}</div>
+        ${refs(e.refs)}
+      </article>`;
     app.innerHTML = `
-      <h1>Técnicas para mejorar la memoria</h1>
-      <p class="suave">Combina los ejercicios con estas estrategias. Pruébalas en «Lista de palabras» y «Dígitos».</p>
-      <div class="tecnicas">
-        ${TECNICAS.map((t) => `
+      <h1>¿Qué funciona de verdad?</h1>
+      <p class="suave">Este programa se basa en lo que muestra la investigación revisada por pares. Ninguna aplicación puede garantizar resultados: por eso incluye una evaluación para que compruebes tu propio progreso con datos.</p>
+
+      <h2>✅ Evidencia sólida</h2>
+      <div class="tecnicas seccion">${EVIDENCIA.solida.map((e) => bloque(e, 'borde-alta')).join('')}</div>
+
+      <h2>⚠️ Evidencia limitada</h2>
+      <div class="tecnicas seccion">${EVIDENCIA.limitada.map((e) => bloque(e, 'borde-limitada')).join('')}</div>
+
+      <h2>💡 Otras técnicas útiles</h2>
+      <div class="tecnicas seccion">
+        ${EVIDENCIA.utiles.map((t) => `
           <article class="tarjeta">
             <h3><span>${t.icono}</span>${t.titulo}</h3>
             <p>${t.texto}</p>
             <div class="ejemplo">💡 ${t.ejemplo}</div>
+            ${t.ref ? refs([t.ref]) : ''}
           </article>`).join('')}
-      </div>`;
+      </div>
+
+      <section class="tarjeta">
+        <h3>📋 Cómo comprobar si te funciona</h3>
+        <ol>
+          <li>Haz la <b>evaluación inicial</b> antes de empezar a entrenar.</li>
+          <li>Entrena a diario: repaso espaciado + palacio de la memoria (10–20 minutos).</li>
+          <li>Repite la evaluación <b>cada 2 semanas</b>. Cada vez se usa una lista de palabras distinta, de dificultad equivalente.</li>
+          <li>Fíjate en la <b>tendencia</b> de varias evaluaciones, no en una sola: es normal que haya variaciones de ±1 punto por azar o cansancio.</li>
+        </ol>
+      </section>`;
   },
 };
 
@@ -1095,28 +1262,29 @@ function graficoActividad(h) {
       ${d.n ? `<text x="${x + ancho * 0.3}" y="${base - alto - 4}" text-anchor="middle">${d.n}</text>` : ''}
       <text x="${x + ancho * 0.3}" y="${H - 8}" text-anchor="middle">${d.etiqueta}</text>`;
   }).join('');
-  return `<svg class="grafico" viewBox="0 0 ${W} ${H}" role="img" aria-label="Ejercicios por día"><line class="eje" x1="0" x2="${W}" y1="${base}" y2="${base}"/>${barras}</svg>`;
+  return `<svg class="grafico" viewBox="0 0 ${W} ${H}" role="img" aria-label="Sesiones por día"><line class="eje" x1="0" x2="${W}" y1="${base}" y2="${base}"/>${barras}</svg>`;
 }
 
-function graficoEvolucion(partidas) {
-  if (partidas.length < 2) {
-    return `<p class="suave">${partidas.length ? 'Juega una partida más' : 'Todavía no hay partidas'} para ver tu evolución.</p>`;
+/** Gráfico de línea genérico. puntos: [{ v, fecha, info }] en orden cronológico. */
+function graficoLinea(puntos, { min0 = true } = {}) {
+  if (puntos.length < 2) {
+    return `<p class="suave">${puntos.length ? 'Hace falta un dato más' : 'Todavía no hay datos'} para ver la evolución.</p>`;
   }
   const W = 560, H = 200, m = { i: 40, d: 12, s: 14, b: 26 };
-  const max = Math.max(...partidas.map((p) => p.puntos), 1);
-  const x = (i) => m.i + (i / (partidas.length - 1)) * (W - m.i - m.d);
-  const y = (v) => H - m.b - (v / max) * (H - m.s - m.b);
-  const puntos = partidas.map((p, i) => `${x(i).toFixed(1)},${y(p.puntos).toFixed(1)}`).join(' ');
+  const max = Math.max(...puntos.map((p) => p.v), 1);
+  const min = min0 ? 0 : Math.min(...puntos.map((p) => p.v));
+  const rango = max - min || 1;
+  const x = (i) => m.i + (i / (puntos.length - 1)) * (W - m.i - m.d);
+  const y = (v) => H - m.b - ((v - min) / rango) * (H - m.s - m.b);
+  const linea = puntos.map((p, i) => `${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
   const guias = [0, 0.5, 1].map((f) => {
-    const v = Math.round(max * f);
+    const v = Math.round(min + rango * f);
     return `<line class="eje" x1="${m.i}" x2="${W - m.d}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.i - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
   }).join('');
-  const marcas = partidas.map((p, i) => {
-    const f = new Date(p.fecha);
-    return `<circle class="punto" cx="${x(i)}" cy="${y(p.puntos)}" r="4"><title>${f.toLocaleDateString('es')} · ${p.puntos} pts · nivel ${p.nivel}</title></circle>`;
-  }).join('');
-  return `<svg class="grafico" viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución de la puntuación">${guias}<polyline class="linea" points="${puntos}"/>${marcas}
-    <text x="${m.i}" y="${H - 6}">Antiguas</text><text x="${W - m.d}" y="${H - 6}" text-anchor="end">Recientes</text></svg>`;
+  const marcas = puntos.map((p, i) =>
+    `<circle class="punto" cx="${x(i)}" cy="${y(p.v)}" r="4"><title>${new Date(p.fecha).toLocaleDateString('es')} · ${escapar(p.info || p.v)}</title></circle>`).join('');
+  return `<svg class="grafico" viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución">${guias}<polyline class="linea" points="${linea}"/>${marcas}
+    <text x="${m.i}" y="${H - 6}">${new Date(puntos[0].fecha).toLocaleDateString('es')}</text><text x="${W - m.d}" y="${H - 6}" text-anchor="end">${new Date(puntos[puntos.length - 1].fecha).toLocaleDateString('es')}</text></svg>`;
 }
 
 /* ---------- Arranque ---------- */
@@ -1142,8 +1310,9 @@ function iniciarApp() {
     Datos.guardar();
     aplicarTema();
   });
-  $$('[data-ir]').forEach((b) => b.addEventListener('click', () => ir(b.dataset.ir)));
+  $$('.barra [data-ir]').forEach((b) => b.addEventListener('click', () => ir(b.dataset.ir)));
   ir('inicio');
 }
 
-iniciarApp();
+// Se arranca cuando se han cargado también evaluacion.js y metodos.js.
+document.addEventListener('DOMContentLoaded', iniciarApp);

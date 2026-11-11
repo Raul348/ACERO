@@ -1,33 +1,48 @@
 # 🧠 Entrenador de Memoria
 
-Aplicación web interactiva para entrenar y mejorar la memoria. No necesita instalación ni conexión a internet.
+Entrenamiento de memoria basado en **métodos con eficacia demostrada en estudios científicos**, con una **evaluación objetiva** para comprobar si mejoras.
+No necesita instalación ni internet: abre `index.html` en cualquier navegador (ordenador, tablet o móvil).
 
-## Cómo usarla
+## Cómo usarlo
 
-Abre `index.html` con doble clic (Chrome, Edge, Firefox o Safari). Funciona en ordenador, tablet y móvil.
+1. **Evaluación inicial (≈ 12 min)**: mide tu memoria antes de entrenar (tu línea base).
+2. **Entrena a diario (10–20 min)**: repaso espaciado + palacio de la memoria.
+3. **Repite la evaluación cada 2 semanas** y compara la tendencia.
 
-## Ejercicios
+## 📋 Evaluación (pre / post)
 
-| Ejercicio | Qué entrena | Cómo se juega |
-|---|---|---|
-| 🃏 **Parejas** | Memoria visual-espacial | Encuentra las parejas de cartas con el menor número de movimientos. |
-| 🎵 **Secuencia** | Memoria secuencial y auditiva | Repite una secuencia de luces y sonidos que crece cada ronda (teclas 1–9). |
-| 🔢 **Dígitos** | Memoria de trabajo verbal | Recuerda números cada vez más largos. Modo inverso y lectura en voz alta. |
-| 🟪 **Cuadrícula** | Memoria espacial | Recuerda qué casillas se iluminaron; la cuadrícula crece. |
-| 📝 **Lista de palabras** | Memoria verbal | Estudia una lista y escribe todas las palabras que recuerdes. |
-| 🎯 **N-Back** | Memoria de trabajo y concentración | Pulsa (o barra espaciadora) cuando la posición coincida con la de N pasos atrás. |
+Protocolo fijo inspirado en pruebas clásicas de la psicología:
 
-## Funciones
+| Prueba | Mide |
+|---|---|
+| Aprendizaje de 15 palabras (3 ensayos) | Memoria verbal y capacidad de aprendizaje |
+| Span de dígitos directo e inverso | Memoria a corto plazo y memoria de trabajo |
+| Span espacial tipo Corsi | Memoria de trabajo visoespacial |
+| Recuerdo diferido | Retención tras varios minutos |
 
-- **Dificultad adaptativa**: el nivel sube o baja según tu rendimiento (también puedes elegirlo).
-- **Entrenamiento diario**: 3 ejercicios aleatorios seguidos.
-- **Progreso**: racha de días, récords, gráfico de actividad y evolución de puntuación.
-- **Técnicas de memoria**: palacio de la memoria, agrupación, historias, repetición espaciada…
-- Sonidos, confeti en los récords, tema claro/oscuro y control por teclado.
-- Los datos se guardan en el navegador (`localStorage`) y se pueden exportar a JSON.
+- 6 **listas paralelas** de palabras (una palabra de las mismas 15 categorías en cada lista), para que las evaluaciones sucesivas sean comparables sin repetir palabras.
+- Avisa si repites la evaluación demasiado pronto (efecto de práctica).
+- Es orientativa: **no es un diagnóstico clínico**.
+
+## ✅ Métodos con evidencia sólida
+
+| Método | Evidencia |
+|---|---|
+| 🔁 **Repaso espaciado con recuerdo activo** (algoritmo SM-2, tarjetas propias) | Roediger y Karpicke (2006); Karpicke y Roediger (2008); Cepeda et al. (2006); Dunlosky et al. (2013) |
+| 🏛️ **Palacio de la memoria** (método de loci con tu propio recorrido) | Dresler et al. (2017), *Neuron* |
+
+## ⚠️ Ejercicios complementarios (evidencia limitada)
+
+Parejas, Secuencia, Dígitos, Cuadrícula, Lista de palabras y N-Back. Mejoran la tarea que se practica, pero los metaanálisis encuentran poca transferencia a la memoria cotidiana (Melby-Lervåg y Hulme, 2013; Simons et al., 2016; Soveri et al., 2017). Se incluyen como calentamiento y para la concentración, y así se indica en el programa.
+
+La página **Evidencia** del programa resume cada estudio con su referencia completa.
 
 ## Archivos
 
-- `index.html` — estructura de la página
+- `index.html` — página principal
 - `estilos.css` — diseño (adaptable a móvil, modo oscuro)
-- `app.js` — lógica de los ejercicios, progreso y estadísticas
+- `app.js` — núcleo, ejercicios complementarios, progreso y página de evidencia
+- `evaluacion.js` — evaluación estandarizada y comparación de resultados
+- `metodos.js` — palacio de la memoria y repaso espaciado (SM-2)
+
+Los datos se guardan en el navegador (`localStorage`) y se pueden exportar a JSON desde «Progreso».
