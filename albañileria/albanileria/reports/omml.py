@@ -176,11 +176,15 @@ class _Parser:
                     raise ValueError("falta )")
             else:
                 dentro = self.atom(stop)
+            self.grupo = False
             return f"<m:rad><m:radPr><m:degHide m:val=\"1\"/></m:radPr><m:deg/><m:e>{dentro}</m:e></m:rad>"
         if tok in ("-", "+"):
-            return _r(tok, normal=True) + self.atom(stop)
+            r = _r(tok, normal=True) + self.atom(stop)
+            self.grupo = False
+            return r
         if tok in (")", "/", "^"):
             raise ValueError(f"token inesperado {tok}")
+        self.grupo = False
         return _ident(tok)
 
 

@@ -43,6 +43,9 @@ def edificio_desde_snapshot(snap: SnapshotEtabs, cfg: ConfigEtabs) -> tuple[Edif
     ed.alturas = [p.altura for p in snap.pisos]
     ed.memoria = DatosMemoria(proyecto=cfg.proyecto or ed.nombre)
     fm = cfg.factor_moderado
+    if cfg.lista_usuario is not None or any(m.es_albanileria is None for m in snap.muros):
+        from .clasificar import clasificar_muros
+        clasificar_muros(snap.muros, cfg.lista_usuario)
     placas = []
     for ms in snap.muros:
         i = snap.indice_piso(ms.piso)
