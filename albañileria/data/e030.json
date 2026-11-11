@@ -1,0 +1,18 @@
+{
+  "_fuente": "NTE E.030 Diseño Sismorresistente (2018). Tablas N°1 (Z), N°3 (S), N°4 (Tp, Tl), N°5 (U), N°7 (R0)",
+  "Z": {"4": 0.45, "3": 0.35, "2": 0.25, "1": 0.10},
+  "S": {"4": {"S0": 0.80, "S1": 1.00, "S2": 1.05, "S3": 1.10},
+        "3": {"S0": 0.80, "S1": 1.00, "S2": 1.15, "S3": 1.20},
+        "2": {"S0": 0.80, "S1": 1.00, "S2": 1.20, "S3": 1.40},
+        "1": {"S0": 0.80, "S1": 1.00, "S2": 1.60, "S3": 2.00}},
+  "TpTl": {"S0": [0.3, 3.0], "S1": [0.4, 2.5], "S2": [0.6, 2.0], "S3": [1.0, 1.6]},
+  "U": {"A1": 1.5, "A2": 1.5, "B": 1.3, "C": 1.0},
+  "porcentaje_carga_viva": {"A1": 0.50, "A2": 0.50, "B": 0.50, "C": 0.25},
+  "R0_albanileria": 3.0,
+  "CT_albanileria": 60.0,
+  "C_sobre_R_min": 0.11,
+  "deriva_max_albanileria": 0.005,
+  "C1_elementos_no_estructurales": {
+    "_nota": "Valores por defecto indicados por el usuario (editables). La fórmula w = 0.8·Z·U·C1·γ·e de la E.070 fue calibrada con la E.030 de 2003 (C1 = 1.3 parapetos/cercos que pueden caer fuera, 0.9 tabiques). Revisar el criterio adoptado.",
+    "parapeto": 3.0, "voladizo": 3.0, "tabique": 2.0, "cerco": 1.3}
+}

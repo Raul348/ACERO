@@ -1,0 +1,14 @@
+{
+  "_fuente": "Barras corrugadas comerciales en el Perú (NTP 341.031 / ASTM A615). Área en mm2, diámetro en mm.",
+  "barras": [
+    {"nombre": "6 mm",  "d": 6.0,   "area": 28.0},
+    {"nombre": "8 mm",  "d": 8.0,   "area": 50.0},
+    {"nombre": "3/8\"", "d": 9.53,  "area": 71.0},
+    {"nombre": "12 mm", "d": 12.0,  "area": 113.0},
+    {"nombre": "1/2\"", "d": 12.7,  "area": 129.0},
+    {"nombre": "5/8\"", "d": 15.88, "area": 199.0},
+    {"nombre": "3/4\"", "d": 19.05, "area": 284.0}
+  ],
+  "longitudinales_columna": ["8 mm", "3/8\"", "1/2\"", "5/8\""],
+  "estribos": ["6 mm", "8 mm", "3/8\""]
+}

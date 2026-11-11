@@ -1,0 +1,11 @@
+{
+  "_fuente": "E.070 Tabla 11 - Fuerzas internas en columnas de confinamiento (coeficientes editables). M = Mu1 - 0.5 Vm1 h ; F = M/L ; Lm = longitud del paño mayor o 0.5 L (el mayor; en muros de un paño Lm = L) ; Nc = número de columnas de confinamiento (en muros de un paño Nc = 2).",
+  "interior": {"kVc": 1.0, "kT_Vh": 1.0, "kC_Vh": 0.5,
+    "formulas": {"Vc": "Vc = Vm1·Lm/(L·(Nc+1))", "T": "T = Vm1·h/L - Pc - Pt", "C": "C = Pc - 0.5·Vm1·h/L"}},
+  "extrema": {"kVc": 1.5,
+    "formulas": {"Vc": "Vc = 1.5·Vm1·Lm/(L·(Nc+1))", "T": "T = F - Pc", "C": "C = Pc + F"}},
+  "diseno": {"phi_cf": 0.85, "mu_sin_tratar": 0.8, "mu_rugosa": 1.0, "phi_traccion": 0.85,
+             "phi_compresion_estribos": 0.7, "phi_compresion_zuncho": 0.75,
+             "delta_sin_muro_transversal": 0.8, "delta_con_muro_transversal": 1.0,
+             "phi_solera": 0.9, "phi_superior": 0.9}
+}

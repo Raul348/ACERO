@@ -1,0 +1,20 @@
+{
+  "_fuente": "E.070 Tabla 9 - Resistencias características de la albañilería (kgf/cm2). Valores por defecto: VERIFICAR con la norma vigente y reemplazar por ensayos de prismas (f'm) y muretes (v'm) cuando existan.",
+  "unidades": [
+    {"nombre": "King Kong artesanal (arcilla)",      "familia": "arcilla",  "fb": 55,  "fm": 35,  "vm": 5.1},
+    {"nombre": "King Kong industrial (arcilla)",     "familia": "arcilla",  "fb": 145, "fm": 65,  "vm": 8.1},
+    {"nombre": "Rejilla industrial (arcilla)",       "familia": "arcilla",  "fb": 215, "fm": 85,  "vm": 9.2},
+    {"nombre": "Sílico-calcáreo King Kong normal",   "familia": "silico",   "fb": 160, "fm": 115, "vm": 9.7},
+    {"nombre": "Sílico-calcáreo Dédalo",             "familia": "silico",   "fb": 145, "fm": 110, "vm": 8.6},
+    {"nombre": "Sílico-calcáreo Estándar y mecano",  "familia": "silico",   "fb": 160, "fm": 110, "vm": 9.2},
+    {"nombre": "Bloque de concreto tipo P (f'b 50)", "familia": "concreto", "fb": 50,  "fm": 73,  "vm": 8.6},
+    {"nombre": "Bloque de concreto tipo P (f'b 65)", "familia": "concreto", "fb": 65,  "fm": 85,  "vm": 9.2},
+    {"nombre": "Bloque de concreto tipo P (f'b 75)", "familia": "concreto", "fb": 75,  "fm": 95,  "vm": 9.7},
+    {"nombre": "Bloque de concreto tipo P (f'b 85)", "familia": "concreto", "fb": 85,  "fm": 110, "vm": 10.9},
+    {"nombre": "Personalizado (ensayos)",            "familia": "arcilla",  "fb": 145, "fm": 65,  "vm": 8.1}
+  ],
+  "modulo_elasticidad": {"arcilla": 500, "silico": 600, "concreto": 700,
+    "_nota": "E.070 Art. 24.7: Em = 500 f'm (arcilla), 600 f'm (sílico-calcáreo), 700 f'm (concreto vibrado); Gm = 0.4 Em"},
+  "coef_vm": {"arcilla": 0.5, "silico": 0.35, "concreto": 0.5,
+    "_nota": "E.070 Art. 26.3: Vm = 0.5 v'm α t L + 0.23 Pg (arcilla y concreto); Vm = 0.35 v'm α t L + 0.23 Pg (sílico-calcáreo)"}
+}
