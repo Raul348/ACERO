@@ -30,6 +30,7 @@ SUBS = {
     "s4": ("s", "4"), "δe": ("δ", "e"), "Δe": ("Δ", "e"), "hs": ("h", "s"), "At": ("A", "t"),
     "wd": ("w", "d"), "wl": ("w", "l"), "Hi-1": ("H", "i-1"), "σm": ("σ", "m"), "Lpaño": ("L", "paño"),
     "Lmáx": ("L", "máx"), "Lconf": ("L", "conf"), "Fa1": ("F", "a1"), "Fa2": ("F", "a2"), "dmín": ("d", "mín"),
+    "Acmín": ("A", "c,mín"), "Asmín": ("A", "s,mín"), "dAn": ("d", "An"),
 }
 _SUB_KEYS = sorted(SUBS, key=len, reverse=True)
 D_OPEN = "<m:d><m:dPr><m:begChr m:val=\"(\"/><m:endChr m:val=\")\"/></m:dPr><m:e>"
@@ -121,13 +122,18 @@ class _Parser:
             if self.peek() == ")" and stop is None:
                 raise ValueError("paréntesis")
             parts.append(self.term(stop))
+            espacio = False
+            while self.peek() == " ":
+                self.take()
+                espacio = True
             tok = self.peek()
             if tok in ("+", "-", "=", "≤", "≥", "<", ">", ",", "·", "×", "*"):
                 self.take()
+                while self.peek() == " ":
+                    self.take()
                 sym = {"*": "·"}.get(tok, tok)
-                parts.append(_r(f" {sym} " if sym in "=≤≥<>" else sym, normal=True))
-            elif tok == " ":
-                self.take()
+                parts.append(_r(f" {sym} " if sym in "=≤≥<>+-" else sym, normal=True))
+            elif espacio:
                 parts.append(_r(" ", normal=True))
         return "".join(parts)
 

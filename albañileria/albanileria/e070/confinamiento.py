@@ -132,9 +132,11 @@ def diseno_columna(nombre: str, Vc: float, T: float, C: float, m: Muro, mat: Mat
     d = _redondear(max(op.dmin_columna, d_cf, d_min15, d_an))
     Ac = t * d
     pasos += [
-        Step("Ac mín", fmt_mm2(Ac_min), "Área mínima de la columna", "Ac ≥ 15·t (cm², t en cm)", f"15·{t / 10:.1f}"),
+        Step("Ac mín", fmt_mm2(Ac_min), "Área mínima de la columna: 15·t (cm², t en cm)", "Acmín = 15·t", f"15·{t / 10:.1f} cm²"),
+        Step("dAn", fmt_mm(d_an), "Peralte para alojar el núcleo An", "dAn = An/(t - 2·r) + 2·r",
+             f"{An:.0f}/({t:.0f} - 2·{r:.0f}) + 2·{r:.0f}" if An > 0 else "An = 0"),
         Step("d", fmt_mm(d), "Peralte adoptado (múltiplo de 5 cm)",
-             "d ≥ máx(dmín, Acf/t, 15·t/t, An/(t - 2·r) + 2·r)",
+             "d ≥ máx(dmín, Acf/t, Acmín/t, dAn)",
              f"máx({op.dmin_columna:.0f}, {d_cf:.0f}, {d_min15:.0f}, {d_an:.0f})"),
         Step("Ac", fmt_mm2(Ac), "Sección adoptada", "Ac = t·d", f"{t:.0f}·{d:.0f}"),
     ]
@@ -143,7 +145,7 @@ def diseno_columna(nombre: str, Vc: float, T: float, C: float, m: Muro, mat: Mat
     txt, As_prov, ok = proponer_barras(As_dis)
     pasos += [
         Step("As mín", fmt_mm2(As_min), "Cuantía mínima", "As ≥ 0.1·f'c·Ac/fy", f"0.1·{mat.fc:.2f}·{Ac:.0f}/{mat.fy:.0f}"),
-        Step("As dis", fmt_mm2(As_dis), "Acero de diseño (mínimo 4 Ø 8 mm = 200 mm²)", "máx(As, As mín, 4 Ø 8 mm)", ""),
+        Step("As dis", fmt_mm2(As_dis), "Acero de diseño (mínimo 4 Ø 8 mm = 200 mm²)", "As = máx(As, Asmín, 200 mm²)", ""),
         Step("Refuerzo", f"{txt} ({As_prov:.0f} mm²)", "Combinación comercial propuesta"),
     ]
     est_txt, est_pasos = _estribos(t, d, mat, r, An, minimo=not agrietado)

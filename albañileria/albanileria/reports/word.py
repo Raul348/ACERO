@@ -135,9 +135,11 @@ class _Memoria:
             r = cells[3].paragraphs[0].add_run(s.valor)
             r.font.size = Pt(8.5)
             r.bold = True
-        for row in t.rows:
-            for i, w in enumerate((2.0, 6.0, 6.0, 3.0)):
-                row.cells[i].width = Cm(w)
+        t.autofit = False
+        for i, w in enumerate((1.8, 7.6, 4.6, 3.0)):
+            t.columns[i].width = Cm(w)
+            for c in t.columns[i].cells:
+                c.width = Cm(w)
 
     def bloque_check(self, c: Check, nivel: int = 4):
         self.h(f"{c.nombre} — {c.referencia}", nivel)
