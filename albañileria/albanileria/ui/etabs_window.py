@@ -208,6 +208,8 @@ class PanelEtabs(QWidget):
     @Slot(object)
     def _al_snapshot(self, snap: SnapshotEtabs):
         self.snap = snap
+        if any(m.es_albanileria is None for m in snap.muros):
+            clasificar_muros(snap.muros)
         self._llenar_tabla()
         self._log(f"Modelo leído: {len(snap.pisos)} pisos, {len(snap.muros)} piers, {len(snap.fuerzas)} filas de fuerzas.")
         self.verificar()
@@ -319,7 +321,10 @@ class PanelEtabs(QWidget):
         except Exception as e:      # noqa: BLE001
             self._al_error(f"{e}\n\n{traceback.format_exc()}")
             return None
-        ed.memoria = self.v.leer_edificio().memoria
+        actual = self.v.leer_edificio()
+        ed.memoria = actual.memoria
+        ed.no_portantes = actual.no_portantes          # los no portantes se ingresan en la pestaña 5
+        ed.cargas = actual.cargas
         if not ed.memoria.proyecto:
             ed.memoria.proyecto = ed.nombre
         self.v.cargar_edificio(ed)
