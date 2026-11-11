@@ -37,4 +37,8 @@ compara Pg (con el área tributaria a mano), ΣV2 de los piers con el cortante d
 
 ## 4. Ejemplo clásico (San Bartolomé / comentarios de la E.070)
 
-Ver la sección siguiente.
+**PENDIENTE.** No se pudieron obtener de una fuente pública verificable los números del ejemplo del libro de
+Á. San Bartolomé (PUCP) ni de los comentarios de la E.070, y no se inventaron cifras. Para completar esta
+validación basta con los datos del ejemplo (geometría y cargas de los muros, Pg, Ve, Me, Vm, ΣVm/VE, fuerzas y
+refuerzo de columnas y soleras): se cargan como edificio en el programa y se agrega una prueba que reporte las
+diferencias en porcentaje por magnitud.
