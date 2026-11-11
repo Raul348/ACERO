@@ -158,6 +158,12 @@ class ResultadoMuro:
         return max((c.dcr for c in ap), default=0.0)
 
     @property
+    def dcr_verificacion(self) -> float:
+        """DCR máximo de las verificaciones (sin los chequeos de la sección propuesta de columnas y soleras)."""
+        return max((c.dcr for c in self.checks_aplicables if not c.nombre.startswith(("Columna", "Solera"))),
+                   default=0.0)
+
+    @property
     def check_gobernante(self) -> Optional[Check]:
         ap = self.checks_aplicables
         return max(ap, key=lambda c: c.dcr) if ap else None
@@ -435,6 +441,7 @@ class Edificio:
     no_portantes: list[ElementoNoPortante] = field(default_factory=list)
     opciones: OpcionesAnalisis = field(default_factory=OpcionesAnalisis)
     memoria: DatosMemoria = field(default_factory=DatosMemoria)
+    alturas: Optional[list[float]] = None            # alturas de entrepiso por piso (mm); None = h_entrepiso
     pesos_override: Optional[list[float]] = None     # peso sísmico por nivel (N)
     VE_override: Optional[dict] = None               # {"X": [VE piso1..N], "Y": [...]} sismo severo (N)
     derivas: Optional[dict] = None                   # {"X": [..], "Y": [..]} derivas inelásticas
@@ -446,6 +453,8 @@ class Edificio:
 
     @property
     def alturas_entrepiso(self) -> list[float]:
+        if self.alturas and len(self.alturas) == self.N:
+            return list(self.alturas)
         return [self.h_entrepiso] * self.N
 
     # ------------------------------------------------ guardar / abrir
@@ -475,3 +484,25 @@ class Edificio:
 def _filtrar(cls, d: dict) -> dict:
     nombres = {f.name for f in fields(cls)}
     return {k: v for k, v in d.items() if k in nombres}
+
+
+def en_unidad(v: float, unidad: str) -> float:
+    """Convierte un valor interno (N, N·mm, MPa, mm, mm²) a la unidad de presentación del Check."""
+    if unidad == "kN":
+        return v / 1000.0
+    if unidad == "kN·m":
+        return v / 1e6
+    return v
+
+
+def texto_valor(v: float, unidad: str) -> str:
+    if v == float("inf"):
+        return "∞"
+    x = en_unidad(v, unidad)
+    if unidad == "MPa":
+        return f"{x:.3f} MPa ({kgf_cm2(x):.2f} kgf/cm²)"
+    if unidad in ("mm", "mm²"):
+        return f"{x:.0f} {unidad}"
+    if unidad == "":
+        return f"{x:.4f}"
+    return f"{x:.2f} {unidad}"

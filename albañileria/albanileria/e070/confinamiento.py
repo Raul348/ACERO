@@ -55,7 +55,7 @@ def _redondear(x: float, paso: float = 50.0) -> float:
 
 
 def _estribos(b: float, d: float, mat: Material, r: float, An_req: float, minimo: bool) -> tuple[str, list[Step]]:
-    if minimo or An_req <= 0:
+    if minimo:
         return "[] Ø 6 mm: 1 @ 5, 4 @ 10, resto @ 25 cm", [
             Step("Estribos", "[] Ø6 mm 1@5, 4@10, r@25 cm", "Estribaje mínimo de confinamiento (E.070 Art. 27.3)")]
     tn = b - 2 * r
