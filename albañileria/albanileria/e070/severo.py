@@ -45,6 +45,9 @@ def refuerzo_horizontal(nombre: str, piso: int, N: int, Vu: float, Vm: float, si
     motivos = []
     if piso > 1 and Vu >= Vm:
         motivos.append("Vu ≥ Vm")
+    if piso == 1 and Vu > Vm * (1 + 1e-6):
+        # con Vm1/Ve1 < 2 el factor se toma 2 y Vu1 = 2·Ve1 supera a Vm1
+        motivos.append("Vu > Vm (factor Vm1/Ve1 llevado al mínimo de 2)")
     if sigma_m >= 0.05 * fm:
         motivos.append("σm ≥ 0.05·f'm")
     if N > 3 and piso == 1:

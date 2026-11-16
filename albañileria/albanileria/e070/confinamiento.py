@@ -10,6 +10,7 @@ _T11 = cargar_json("tabla11.json")
 _B = cargar_json("barras.json")
 BARRAS = {b["nombre"]: b for b in _B["barras"]}
 LONGITUDINALES = _B["longitudinales_columna"]
+ESTRIBOS = _B["estribos"]
 AS_MIN_4D8 = 4 * BARRAS["8 mm"]["area"]       # 4 Ø 8 mm = 200 mm²
 D = _T11["diseno"]
 
@@ -62,7 +63,7 @@ def _estribos(b: float, d: float, mat: Material, r: float, An_req: float, minimo
     Ac = b * d
     An = (b - 2 * r) * (d - 2 * r)
     pasos = []
-    for nom in ("6 mm", "8 mm", "3/8\""):
+    for nom in ESTRIBOS:
         Av = 2 * BARRAS[nom]["area"]
         s1 = Av * mat.fy / (0.3 * tn * mat.fc * (Ac / An - 1)) if Ac > An else math.inf
         s2 = Av * mat.fy / (0.12 * tn * mat.fc)

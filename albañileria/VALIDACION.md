@@ -1,6 +1,6 @@
 # Validación — ALBAÑILERÍA E.070
 
-Todas las pruebas: `python -m pytest -q tests` (39 pruebas, todas en verde).
+Todas las pruebas: `python -m pytest -q tests` (61 pruebas, todas en verde).
 
 ## 1. Números calculados a mano (diferencia 0 %)
 
@@ -42,3 +42,57 @@ compara Pg (con el área tributaria a mano), ΣV2 de los piers con el cortante d
 validación basta con los datos del ejemplo (geometría y cargas de los muros, Pg, Ve, Me, Vm, ΣVm/VE, fuerzas y
 refuerzo de columnas y soleras): se cargan como edificio en el programa y se agrega una prueba que reporte las
 diferencias en porcentaje por magnitud.
+
+## 5. Memoria externa: muro MX12, piso 1 (hoja de cálculo E.070 entregada por el usuario)
+
+Datos: f'm = 65, v'm = 8.05, E = 32 500 kgf/cm²; L = 2.60 m, t = 0.23 m, h = 2.40 m; Pm = 16 t, Pg = 14 t,
+Ve = 8.72 t, Me = 42.98 t·m; f'c = 210, fy = 4200 kgf/cm²; μ = 1.0; δ = 1.0. Prueba:
+`tests/test_validacion_mx12.py` (tabla: `PYTHONPATH=. python tests/test_validacion_mx12.py`).
+
+| Magnitud | Memoria | Programa | Dif. % |
+|---|---|---|---|
+| σm (t/m²) | 26.76 | 26.756 | −0.02 |
+| α | 0.53 | 0.528 | −0.47 (redondeo de la memoria) |
+| Vm (t) | 15.92 | 15.917 | −0.02 |
+| 0.55·Vm (t) | 8.75 | 8.754 | +0.05 |
+| Vm1/Ve1 | 2.00 | 2.00 | 0.00 |
+| Vu / Mu | 17.44 t / 85.96 t·m | 17.44 / 85.96 | 0.00 |
+| M = Mu − ½·Vm·h (t·m) | 66.85 | 66.86 | +0.01 |
+| F / Pc (t) | 25.71 / 7.00 | 25.715 / 7.00 | +0.02 / 0.00 |
+| Vc / T / C (t) | 7.96 / 18.713 / 32.71 | 7.958 / 18.715 / 32.715 | −0.02 / +0.01 / +0.02 |
+| Acf (cm²) | 222.93 | 222.92 | 0.00 |
+| As = Asf + Ast (cm²) | 7.47 | 7.472 | +0.02 |
+| Ac / An núcleo (cm²) | 575 / 399 | 575 / 399 | 0.00 |
+| s1 / s2 con Ø1/4" (cm) | 5.09 / 5.61 | 5.091 / 5.614 | +0.02 / +0.07 |
+| Ts (t) / As solera (cm²) | 7.96 / 2.11 | 7.958 / 2.105 | −0.02 / −0.22 |
+
+Decisiones iguales: no hay fisuración (8.72 ≤ 8.75 t), muro agrietado, requiere refuerzo horizontal
+(Vu = 17.44 > Vm = 15.92 t), columna 25 × 23 cm (gobierna 15·t = 345 cm²), solera 4 Ø 3/8".
+
+### Observaciones a la memoria (argumentadas)
+
+1. **Acero vertical insuficiente**: se requieren As = 7.47 cm² y se adopta 10 Ø 3/8" = 7.10 cm² (−5 %). Además
+   10 barras en un núcleo de 19 × 21 cm es poco constructivo. El programa propone 4 Ø 5/8" (7.96 cm²);
+   6 Ø 1/2" (7.74 cm²) también cumpliría.
+2. **Estribos de la zona confinada**: la propia memoria calcula s = mín(s1…s4) = 5.09 cm, pero en el detalle
+   final pone 1 @ 0.05, 4 @ 0.10, resto @ 0.25 (10 cm en la zona de 45 cm). Eso no cumple el s calculado. Lo
+   coherente es [] Ø 1/4": 1 @ 5, 8 @ 5 cm en los 45 cm de cada extremo, resto @ 25 (es lo que da el programa).
+3. **An calculado con el acero adoptado**: 101.85 cm² resulta de usar As = 7.10 cm² (el insuficiente). Con el
+   As requerido (7.47 cm²) An = 93.5 cm². Como An disponible = 399 cm², no gobierna.
+4. **δ = 1.0 y T sin muro transversal no son coherentes**: el diseño usa T1 (columna sin muro transversal) pero
+   δ = 1.0 (columna confinada por muros transversales). Si no hay muro transversal, δ = 0.8 y An = 115 cm²,
+   que sigue siendo menor que 399 cm²: no cambia el resultado.
+5. **Pt = 0.25·Pg = 4 t** es una suposición. En la E.070, Pt es la carga tributaria del muro transversal
+   (≈ Lt·Pg/L). Sólo afecta a T2, que no se usó para diseñar.
+6. **Errata en la fórmula**: dice M = Mu1 − ½·Mm1·h, debe decir ½·Vm1·h. El número (66.85) sí usa Vm1.
+7. **Vu y Mu del cuadro inicial** (26.16 t, 128.93 t·m = 3·Ve, 3·Me) no son los que se usan en el diseño
+   (17.44 t, 85.96 t·m con el factor 2.0). Conviene corregir el cuadro para no confundir.
+8. **s3 con d = 22.5 cm** en vez del peralte de 25 cm (d/4 = 6.25 cm). No gobierna.
+9. **Solera de 25 cm de ancho** en un muro de 23 cm. Lo usual es t × peralte (23 × 20). As mín = 2.50 cm² frente
+   a 2.30 cm²: 4 Ø 3/8" cumple en ambos casos.
+10. **Fisuración al límite**: DCR = 8.72/8.75 = 0.996. Cumple, pero sin margen (Vm/Ve = 1.83).
+
+### Ajustes hechos en el programa por esta validación
+- Refuerzo horizontal en el piso 1 cuando Vu > Vm porque el factor Vm1/Ve1 se llevó al mínimo de 2 (antes sólo
+  por σm ≥ 0.05·f'm o N > 3). Ahora coincide con la memoria.
+- Se agregó la barra Ø 1/4" (0.32 cm²) a los estribos comerciales (6 mm, 1/4", 8 mm, 3/8").
